@@ -129,6 +129,11 @@ def rotationMatrixAxisX(elevation=0.0):
 					 0, math.cos(elevation), -math.sin(elevation),
 					 0, math.sin(elevation), math.cos(elevation))
 
+def rotationMatrixAxisY(angle=0.0):
+	return Matrix3x3(math.cos(angle), 0, math.sin(angle),
+					 0, 1, 0,
+					 -math.sin(angle), 0, math.cos(angle))
+
 def rotationMatrixAxisZ(azimuth=0.0):
 	return Matrix3x3(math.cos(azimuth), -math.sin(azimuth), 0,
 					 math.sin(azimuth), math.cos(azimuth), 0,
@@ -161,11 +166,12 @@ class Segment3D:
 
 		ax.plot([xp1, xp2], [yp1, yp2], [zp1, zp2], color=color)
 
-	def project(self, plt, color='b', camera_az=0.0, camera_elev=0.0):
+	def project(self, plt, color='b', camera_az=0.0, camera_elev=0.0, camera_ang=0.0):
 		xRotationMatrix = rotationMatrixAxisX(elevation=camera_elev)
+		yRotationMatrix = rotationMatrixAxisY(angle=camera_ang)
 		zRotationMatrix = rotationMatrixAxisZ(azimuth=camera_az)
-		dir1 = xRotationMatrix.prod(zRotationMatrix.prod(Vector3D(1, 0, 0)))
-		dir2 = xRotationMatrix.prod(zRotationMatrix.prod(Vector3D(0, 1, 0)))
+		dir1 = xRotationMatrix.prod(yRotationMatrix.prod(zRotationMatrix.prod(Vector3D(1, 0, 0))))
+		dir2 = xRotationMatrix.prod(yRotationMatrix.prod(zRotationMatrix.prod(Vector3D(0, 1, 0))))
 
 		xp1 = self.p1.dot_prod(dir1) / dir1.length()
 		yp1 = self.p1.dot_prod(dir2) / dir2.length()
@@ -187,11 +193,38 @@ class Triangle3D:
 		s2.draw(ax, color=color, flat=flat, camera_az=camera_az)
 		s3.draw(ax, color=color, flat=flat, camera_az=camera_az)
 
-	def project(self, plt, color='b', camera_az=0.0, camera_elev=0.0):
+	def project(self, plt, color='b', camera_az=0.0, camera_elev=0.0, camera_ang=0.0):
 		s1 = Segment3D(self.p1, self.p2)
 		s2 = Segment3D(self.p1, self.p3)
 		s3 = Segment3D(self.p2, self.p3)
-		s1.project(plt, color=color, camera_az=camera_az, camera_elev=camera_elev)
-		s2.project(plt, color=color, camera_az=camera_az, camera_elev=camera_elev)
-		s3.project(plt, color=color, camera_az=camera_az, camera_elev=camera_elev)
+		s1.project(plt, color=color, camera_az=camera_az, camera_elev=camera_elev, camera_ang=camera_ang)
+		s2.project(plt, color=color, camera_az=camera_az, camera_elev=camera_elev, camera_ang=camera_ang)
+		s3.project(plt, color=color, camera_az=camera_az, camera_elev=camera_elev, camera_ang=camera_ang)
+
+class Square3D:
+	def __init__(self, p1, p2, p3, p4):
+		self.p1 = p1
+		self.p2 = p2
+		self.p3 = p3
+		self.p4 = p4
+
+	def draw(self, ax, color='b', flat=False, camera_az=0.0):
+		s1 = Segment3D(self.p1, self.p2)
+		s2 = Segment3D(self.p2, self.p3)
+		s3 = Segment3D(self.p3, self.p4)
+		s4 = Segment3D(self.p4, self.p1)
+		s1.draw(ax, color=color, flat=flat, camera_az=camera_az)
+		s2.draw(ax, color=color, flat=flat, camera_az=camera_az)
+		s3.draw(ax, color=color, flat=flat, camera_az=camera_az)
+		s4.draw(ax, color=color, flat=flat, camera_az=camera_az)
+
+	def project(self, plt, color='b', camera_az=0.0, camera_elev=0.0, camera_ang=0.0):
+		s1 = Segment3D(self.p1, self.p2)
+		s2 = Segment3D(self.p2, self.p3)
+		s3 = Segment3D(self.p3, self.p4)
+		s4 = Segment3D(self.p4, self.p1)
+		s1.project(plt, color=color, camera_az=camera_az, camera_elev=camera_elev, camera_ang=camera_ang)
+		s2.project(plt, color=color, camera_az=camera_az, camera_elev=camera_elev, camera_ang=camera_ang)
+		s3.project(plt, color=color, camera_az=camera_az, camera_elev=camera_elev, camera_ang=camera_ang)
+		s4.project(plt, color=color, camera_az=camera_az, camera_elev=camera_elev, camera_ang=camera_ang)
 
