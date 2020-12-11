@@ -245,4 +245,22 @@ class Object3D:
 	def __init__(self, polygons):
 		self.polygons = polygons
 
+	def project(self, plt, camera_az=0.0, camera_elev=0.0, camera_ang=0.0, camera_dist=1.0):
+		for polygon in self.polygons:
+			polygon.project(plt, color='k', camera_az=camera_az, camera_elev=camera_elev, camera_ang=camera_ang, camera_dist=camera_dist)
 
+class Scene3D:
+	def __init__(self, objects, camera_az=0.0, camera_elev=0.0, camera_ang=0.0, camera_dist=1.0):
+		self.objects = objects
+		self.camera_azimuth = camera_az
+		self.camera_elevation = camera_elev
+		self.camera_angle = camera_ang
+		self.camera_distance = camera_dist
+
+	def project(self, plt):
+		for object in self.objects:
+			object.project(plt,
+						   camera_az=self.camera_azimuth,
+						   camera_elev=self.camera_elevation,
+						   camera_ang=self.camera_angle,
+						   camera_dist=self.camera_distance)
