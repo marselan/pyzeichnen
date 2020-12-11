@@ -129,14 +129,14 @@ def rotationMatrixAxisX(elevation=0.0):
 					 0, math.cos(elevation), -math.sin(elevation),
 					 0, math.sin(elevation), math.cos(elevation))
 
-def rotationMatrixAxisY(angle=0.0):
-	return Matrix3x3(math.cos(angle), 0, math.sin(angle),
+def rotationMatrixAxisY(azimuth=0.0):
+	return Matrix3x3(math.cos(azimuth), 0, math.sin(azimuth),
 					 0, 1, 0,
-					 -math.sin(angle), 0, math.cos(angle))
+					 -math.sin(azimuth), 0, math.cos(azimuth))
 
-def rotationMatrixAxisZ(azimuth=0.0):
-	return Matrix3x3(math.cos(azimuth), -math.sin(azimuth), 0,
-					 math.sin(azimuth), math.cos(azimuth), 0,
+def rotationMatrixAxisZ(angle=0.0):
+	return Matrix3x3(math.cos(angle), -math.sin(angle), 0,
+					 math.sin(angle), math.cos(angle), 0,
 					 0, 0, 1)
 
 class Segment3D:
@@ -166,17 +166,17 @@ class Segment3D:
 
 		ax.plot([xp1, xp2], [yp1, yp2], [zp1, zp2], color=color)
 
-	def project(self, plt, color='b', camera_az=0.0, camera_elev=0.0, camera_ang=0.0):
+	def project(self, plt, color='b', camera_az=0.0, camera_elev=0.0, camera_ang=0.0, camera_dist=1.0):
 		xRotationMatrix = rotationMatrixAxisX(elevation=camera_elev)
-		yRotationMatrix = rotationMatrixAxisY(angle=camera_ang)
-		zRotationMatrix = rotationMatrixAxisZ(azimuth=camera_az)
-		dir1 = xRotationMatrix.prod(yRotationMatrix.prod(zRotationMatrix.prod(Vector3D(1, 0, 0))))
-		dir2 = xRotationMatrix.prod(yRotationMatrix.prod(zRotationMatrix.prod(Vector3D(0, 1, 0))))
+		yRotationMatrix = rotationMatrixAxisY(azimuth=camera_az)
+		zRotationMatrix = rotationMatrixAxisZ(angle=camera_ang)
+		dir1 = zRotationMatrix.prod(yRotationMatrix.prod(xRotationMatrix.prod(Vector3D(1, 0, 0))))
+		dir2 = zRotationMatrix.prod(yRotationMatrix.prod(xRotationMatrix.prod(Vector3D(0, 1, 0))))
 
-		xp1 = self.p1.dot_prod(dir1) / dir1.length()
-		yp1 = self.p1.dot_prod(dir2) / dir2.length()
-		xp2 = self.p2.dot_prod(dir1) / dir1.length()
-		yp2 = self.p2.dot_prod(dir2) / dir2.length()
+		xp1 = self.p1.dot_prod(dir1) / (dir1.length() * camera_dist)
+		yp1 = self.p1.dot_prod(dir2) / (dir2.length() * camera_dist)
+		xp2 = self.p2.dot_prod(dir1) / (dir1.length() * camera_dist)
+		yp2 = self.p2.dot_prod(dir2) / (dir2.length() * camera_dist)
 		plt.plot([xp1, xp2], [yp1, yp2], color=color)
 
 class Triangle3D:
@@ -227,4 +227,22 @@ class Square3D:
 		s2.project(plt, color=color, camera_az=camera_az, camera_elev=camera_elev, camera_ang=camera_ang)
 		s3.project(plt, color=color, camera_az=camera_az, camera_elev=camera_elev, camera_ang=camera_ang)
 		s4.project(plt, color=color, camera_az=camera_az, camera_elev=camera_elev, camera_ang=camera_ang)
+
+class Polygon3D:
+	def __init__(self, vectors):
+		self.vectors = vectors
+
+	def draw(self, ax, color='b', flat=False, camera_az=0.0):
+		print()
+
+	def project(self, plt, color='k', camera_az=0.0, camera_elev=0.0, camera_ang=0.0, camera_dist=1.0):
+		for vi, ve in zip(self.vectors[0:], self.vectors[1:]):
+			Segment3D(vi, ve).project(plt, color=color, camera_az=camera_az, camera_elev=camera_elev, camera_ang=camera_ang, camera_dist=camera_dist)
+		Segment3D(self.vectors[-1], self.vectors[0]).project(plt, color=color, camera_az=camera_az, camera_elev=camera_elev, camera_ang=camera_ang, camera_dist=camera_dist)
+
+
+class Object3D:
+	def __init__(self, polygons):
+		self.polygons = polygons
+
 
