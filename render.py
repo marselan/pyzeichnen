@@ -3,7 +3,7 @@
 #
 # Created by Mariano Arselan at 01-12-20
 #
-
+import pywavefront
 import matplotlib.pyplot as plt
 import numbers
 import math
@@ -115,6 +115,10 @@ class Vector3D:
 		len = self.length()
 		return Vector3D(x / len, y / len, z / len)
 
+	def __repr__(self):
+		x, y, z = self.xyz
+		return f'({x}, {y}, {z})'
+
 class Matrix3x3:
 	def __init__(self, c00, c01, c02, c10, c11, c12, c20, c21, c22):
 		self.v0 = Vector3D(c00, c01, c02)
@@ -193,13 +197,16 @@ class Triangle3D:
 		s2.draw(ax, color=color, flat=flat, camera_az=camera_az)
 		s3.draw(ax, color=color, flat=flat, camera_az=camera_az)
 
-	def project(self, plt, color='b', camera_az=0.0, camera_elev=0.0, camera_ang=0.0):
+	def project(self, plt, color='b', camera_az=0.0, camera_elev=0.0, camera_ang=0.0, camera_dist=1.0):
 		s1 = Segment3D(self.p1, self.p2)
 		s2 = Segment3D(self.p1, self.p3)
 		s3 = Segment3D(self.p2, self.p3)
-		s1.project(plt, color=color, camera_az=camera_az, camera_elev=camera_elev, camera_ang=camera_ang)
-		s2.project(plt, color=color, camera_az=camera_az, camera_elev=camera_elev, camera_ang=camera_ang)
-		s3.project(plt, color=color, camera_az=camera_az, camera_elev=camera_elev, camera_ang=camera_ang)
+		s1.project(plt, color=color, camera_az=camera_az, camera_elev=camera_elev, camera_ang=camera_ang, camera_dist=camera_dist)
+		s2.project(plt, color=color, camera_az=camera_az, camera_elev=camera_elev, camera_ang=camera_ang, camera_dist=camera_dist)
+		s3.project(plt, color=color, camera_az=camera_az, camera_elev=camera_elev, camera_ang=camera_ang, camera_dist=camera_dist)
+
+	def __repr__(self):
+		return f'Triangle [ {self.p1}, {self.p2}, {self.p3} ] '
 
 class Square3D:
 	def __init__(self, p1, p2, p3, p4):
@@ -229,29 +236,58 @@ class Square3D:
 		s4.project(plt, color=color, camera_az=camera_az, camera_elev=camera_elev, camera_ang=camera_ang)
 
 class Polygon3D:
-	def __init__(self, vectors):
+	def __init__(self, vectors, normal, color='k'):
 		self.vectors = vectors
+		self.normal = normal
+		self.color = color
 
 	def draw(self, ax, color='b', flat=False, camera_az=0.0):
 		print()
 
-	def project(self, plt, color='k', camera_az=0.0, camera_elev=0.0, camera_ang=0.0, camera_dist=1.0):
+	def project(self, plt, camera_az=0.0, camera_elev=0.0, camera_ang=0.0, camera_dist=1.0):
+
+		xRotationMatrix = rotationMatrixAxisX(elevation=camera_elev)
+		yRotationMatrix = rotationMatrixAxisY(azimuth=camera_az)
+		zRotationMatrix = rotationMatrixAxisZ(angle=camera_ang)
+
+		b1 = zRotationMatrix.prod(yRotationMatrix.prod(xRotationMatrix.prod(Vector3D(1, 0, 0))))
+		b2 = zRotationMatrix.prod(yRotationMatrix.prod(xRotationMatrix.prod(Vector3D(0, 1, 0))))
+		b3 = zRotationMatrix.prod(yRotationMatrix.prod(xRotationMatrix.prod(Vector3D(0, 0, 1))))
+
+		b = b1.add(b2).add(b3)
+		n = zRotationMatrix.prod(yRotationMatrix.prod(xRotationMatrix.prod(Vector3D(*self.normal))))
+
+		#if n.dot_prod(b) < 0:
+		#	return
+
 		for vi, ve in zip(self.vectors[0:], self.vectors[1:]):
-			Segment3D(vi, ve).project(plt, color=color, camera_az=camera_az, camera_elev=camera_elev, camera_ang=camera_ang, camera_dist=camera_dist)
-		Segment3D(self.vectors[-1], self.vectors[0]).project(plt, color=color, camera_az=camera_az, camera_elev=camera_elev, camera_ang=camera_ang, camera_dist=camera_dist)
+			Segment3D(vi, ve).project(plt, color=self.color, camera_az=camera_az, camera_elev=camera_elev, camera_ang=camera_ang, camera_dist=camera_dist)
+		Segment3D(self.vectors[-1], self.vectors[0]).project(plt, color=self.color, camera_az=camera_az, camera_elev=camera_elev, camera_ang=camera_ang, camera_dist=camera_dist)
 
+class Face3D:
+	def __init__(self, triangles=None):
+		if triangles is None:
+			triangles = []
+		self.triangles = triangles
 
-class Object3D:
-	def __init__(self, polygons):
-		self.polygons = polygons
+	def add(self, triangle):
+		self.triangles.append(triangle)
+
+	def __repr__(self):
+		representation = "Face <"
+		for triangle in self.triangles:
+			representation += f'{triangle}'
+		representation += " >"
+		return representation
 
 	def project(self, plt, camera_az=0.0, camera_elev=0.0, camera_ang=0.0, camera_dist=1.0):
-		for polygon in self.polygons:
-			polygon.project(plt, color='k', camera_az=camera_az, camera_elev=camera_elev, camera_ang=camera_ang, camera_dist=camera_dist)
+		for triangle in self.triangles:
+			triangle.project(plt, camera_az=camera_az, camera_elev=camera_elev, camera_ang=camera_ang, camera_dist=camera_dist)
 
 class Scene3D:
-	def __init__(self, objects, camera_az=0.0, camera_elev=0.0, camera_ang=0.0, camera_dist=1.0):
-		self.objects = objects
+	def __init__(self, file_name, camera_az=0.0, camera_elev=0.0, camera_ang=0.0, camera_dist=1.0):
+		self.file_name = file_name
+		self.objects = []
 		self.camera_azimuth = camera_az
 		self.camera_elevation = camera_elev
 		self.camera_angle = camera_ang
@@ -264,3 +300,32 @@ class Scene3D:
 						   camera_elev=self.camera_elevation,
 						   camera_ang=self.camera_angle,
 						   camera_dist=self.camera_distance)
+
+	def parse_file(self):
+		scene = pywavefront.Wavefront(self.file_name, strict=True, encoding="utf-8", collect_faces=True, parse=True, create_materials=True, cache=False)
+		for name, material in scene.materials.items():
+			print(material.vertex_format)
+			v = material.vertices
+
+			vectors = []
+			for index in range(0, len(v), 3):
+				vector = Vector3D(*v[index:index+3])
+				vectors.append(vector)
+
+			triangles = []
+			for index in range(0, len(vectors), 3):
+				triangle = Triangle3D(*vectors[index:index + 3])
+				triangles.append(triangle)
+
+			index = 0
+			for mesh in scene.mesh_list:
+				face = Face3D()
+				for _ in mesh.faces:
+					triangle = triangles[index]
+					index += 1
+					face.add(triangle)
+				self.objects.append(face)
+
+
+
+

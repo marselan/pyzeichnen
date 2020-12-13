@@ -28,49 +28,38 @@ def draw(ax, cubes, color='b', camera_az=0.0):
     for cube in cubes:
         cube.draw(ax, color=color, camera_az=camera_az)
 
-def project(ax, cubes,color='b', camera_az=0.0, camera_elev=0.0, camera_ang=0.0, camera_dist=1.0):
-    for cube in cubes:
-        cube.project(ax, color=color, camera_az=camera_az, camera_elev=camera_elev, camera_ang=camera_ang, camera_dist=camera_dist)
 
-
-p1 = render.Vector3D(1, 1, 1)
-p2 = render.Vector3D(1, 1, -1)
-p3 = render.Vector3D(-1, 1, -1)
-p4 = render.Vector3D(-1, 1, 1)
-s1 = render.Polygon3D([p1, p2, p3, p4])
-
+# left face
 p1 = render.Vector3D(-1, 1, 1)
 p2 = render.Vector3D(-1, 1, -1)
 p3 = render.Vector3D(-1, -1, -1)
 p4 = render.Vector3D(-1, -1, 1)
-s2 = render.Polygon3D([p1, p2, p3, p4])
+s2 = render.Polygon3D([p1, p2, p3, p4], (-1, 0, 0), color='gray')
 
+# front face
 p1 = render.Vector3D(1, -1, 1)
 p2 = render.Vector3D(1, -1, -1)
 p3 = render.Vector3D(-1, -1, -1)
 p4 = render.Vector3D(-1, -1, 1)
-s3 = render.Polygon3D([p1, p2, p3, p4])
+s3 = render.Polygon3D([p1, p2, p3, p4], (0, -1, 0), color='yellow')
 
+# right face
 p1 = render.Vector3D(1, 1, 1)
 p2 = render.Vector3D(1, 1, -1)
 p3 = render.Vector3D(1, -1, -1)
 p4 = render.Vector3D(1, -1, 1)
-s4 = render.Polygon3D([p1, p2, p3, p4])
+s4 = render.Polygon3D([p1, p2, p3, p4], (1, 0, 0))
 
+# top face
 p1 = render.Vector3D(1, 1, 1)
 p2 = render.Vector3D(-1, 1, 1)
 p3 = render.Vector3D(-1, -1, 1)
 p4 = render.Vector3D(1, -1, 1)
-s5 = render.Polygon3D([p1, p2, p3, p4])
+s5 = render.Polygon3D([p1, p2, p3, p4], (0, 0, 1), color='k')
 
-p1 = render.Vector3D(1, 1, -1)
-p2 = render.Vector3D(-1, 1, -1)
-p3 = render.Vector3D(-1, -1, -1)
-p4 = render.Vector3D(1, -1, -1)
-s6 = render.Polygon3D([p1, p2, p3, p4])
+scene = render.Scene3D('cube.obj')
+scene.parse_file()
 
-cube = render.Object3D([s1, s2, s3, s4, s5, s6])
-scene = render.Scene3D([cube])
 
 top1 = tki.Toplevel()
 top1.title("3D render")
@@ -134,7 +123,7 @@ def on_azimuth_changed(value):
     camera_az = float(value)
     plt1.clear()
     plt2.clear()
-    draw(plt1, [s1, s2, s3, s4, s5, s6], color='k', camera_az=camera_az)
+    draw(plt1, [], color='k', camera_az=camera_az)
     plt2.plot([-2, 2, 2, -2, -2], [-2, -2, 2, 2, -2], color='r')
     scene.camera_azimuth = camera_az
     scene.project(plt2)
@@ -160,7 +149,7 @@ top2.protocol("WM_DELETE_WINDOW", on_closing)
 root.withdraw()
 
 
-draw(plt1, [s1, s2, s3, s4, s5, s6], color='k')
+draw(plt1, [], color='k')
 plt2.plot([-2, 2, 2, -2, -2], [-2, -2, 2, 2, -2], color='r')
 scene.project(plt2)
 
