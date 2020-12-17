@@ -351,8 +351,6 @@ class Scene3D:
 					index += 1
 					face.add(triangle)
 				self.objects.append(face)
-			for object in self.objects:
-				print(object)
 
 
 
