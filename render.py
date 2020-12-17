@@ -8,6 +8,30 @@ import matplotlib.pyplot as plt
 import numbers
 import math
 
+class Matrix3x3:
+	def __init__(self, c00, c01, c02, c10, c11, c12, c20, c21, c22):
+		self.v0 = Vector3D(c00, c01, c02)
+		self.v1 = Vector3D(c10, c11, c12)
+		self.v2 = Vector3D(c20, c21, c22)
+
+	def prod(self, vector):
+		return Vector3D(self.v0.dot_prod(vector), self.v1.dot_prod(vector), self.v2.dot_prod(vector))
+
+def rotationMatrixAxisX(elevation=0.0):
+	return Matrix3x3(1, 0, 0,
+					 0, math.cos(elevation), -math.sin(elevation),
+					 0, math.sin(elevation), math.cos(elevation))
+
+def rotationMatrixAxisY(azimuth=0.0):
+	return Matrix3x3(math.cos(azimuth), 0, math.sin(azimuth),
+					 0, 1, 0,
+					 -math.sin(azimuth), 0, math.cos(azimuth))
+
+def rotationMatrixAxisZ(angle=0.0):
+	return Matrix3x3(math.cos(angle), -math.sin(angle), 0,
+					 math.sin(angle), math.cos(angle), 0,
+					 0, 0, 1)
+
 class Polygon:
 	def __init__(self, vectors):
 		self.vectors = vectors.copy()
@@ -72,12 +96,28 @@ class Function3D:
 
 
 class Vector3D:
-	def __init__(self, x, y, z):
+	def __init__(self, x, y, z, nX=0, nY=0, nZ=0):
 		self.xyz = (x, y, z)
+		self.normal = (nX, nY, nZ)
 
-	def draw(self, ax, color='b'):
+	def draw(self, ax, color='b', camera_az=0.0, camera_elev=0.0, camera_ang=0.0):
 		x, y, z = self.xyz
-		ax.plot([0, x], [0, y], [0, z], color=color)
+		xRotationMatrix = rotationMatrixAxisX(elevation=camera_elev)
+		yRotationMatrix = rotationMatrixAxisY(azimuth=camera_az)
+		zRotationMatrix = rotationMatrixAxisZ(angle=camera_ang)
+		v = zRotationMatrix.prod(yRotationMatrix.prod(xRotationMatrix.prod(self)))
+		vx, vy, vz = v.xyz
+		ax.plot([0, vx], [0, vy], [0, vz], color=color)
+
+	def project(self, ax, color='b', camera_az=0.0, camera_elev=0.0, camera_ang=0.0):
+		x, y, z = self.xyz
+		xRotationMatrix = rotationMatrixAxisX(elevation=camera_elev)
+		yRotationMatrix = rotationMatrixAxisY(azimuth=camera_az)
+		zRotationMatrix = rotationMatrixAxisZ(angle=camera_ang)
+		dir1 = zRotationMatrix.prod(yRotationMatrix.prod(xRotationMatrix.prod(Vector3D(1, 0, 0))))
+		dir2 = zRotationMatrix.prod(yRotationMatrix.prod(xRotationMatrix.prod(Vector3D(0, 1, 0))))
+		dir3 = zRotationMatrix.prod(yRotationMatrix.prod(xRotationMatrix.prod(Vector3D(0, 0, 1))))
+		ax.plot([0, dir1.dot_prod(Vector3D(x, 0, 0))], [0, dir2.dot_prod(Vector3D(0, y, 0))], [0, dir3.dot_prod(Vector3D(0, 0, z))], color=color)
 
 	def components(self):
 		return self.xyz
@@ -119,34 +159,10 @@ class Vector3D:
 		x, y, z = self.xyz
 		return f'({x}, {y}, {z})'
 
-class Matrix3x3:
-	def __init__(self, c00, c01, c02, c10, c11, c12, c20, c21, c22):
-		self.v0 = Vector3D(c00, c01, c02)
-		self.v1 = Vector3D(c10, c11, c12)
-		self.v2 = Vector3D(c20, c21, c22)
-
-	def prod(self, vector):
-		return Vector3D(self.v0.dot_prod(vector), self.v1.dot_prod(vector), self.v2.dot_prod(vector))
-
-def rotationMatrixAxisX(elevation=0.0):
-	return Matrix3x3(1, 0, 0,
-					 0, math.cos(elevation), -math.sin(elevation),
-					 0, math.sin(elevation), math.cos(elevation))
-
-def rotationMatrixAxisY(azimuth=0.0):
-	return Matrix3x3(math.cos(azimuth), 0, math.sin(azimuth),
-					 0, 1, 0,
-					 -math.sin(azimuth), 0, math.cos(azimuth))
-
-def rotationMatrixAxisZ(angle=0.0):
-	return Matrix3x3(math.cos(angle), -math.sin(angle), 0,
-					 math.sin(angle), math.cos(angle), 0,
-					 0, 0, 1)
-
 class Segment3D:
 	def __init__(self, p1, p2):
-		self.p1 = Vector3D(*p1.components())
-		self.p2 = Vector3D(*p2.components())
+		self.p1 = p1
+		self.p2 = p2
 
 	def draw(self, ax, color='b', flat=False, camera_az=0.0, camera_elev=0.0):
 
@@ -176,6 +192,12 @@ class Segment3D:
 		zRotationMatrix = rotationMatrixAxisZ(angle=camera_ang)
 		dir1 = zRotationMatrix.prod(yRotationMatrix.prod(xRotationMatrix.prod(Vector3D(1, 0, 0))))
 		dir2 = zRotationMatrix.prod(yRotationMatrix.prod(xRotationMatrix.prod(Vector3D(0, 1, 0))))
+		dir3 = zRotationMatrix.prod(yRotationMatrix.prod(xRotationMatrix.prod(Vector3D(0, 0, 1))))
+
+		dot_prod = dir3.dot_prod(Vector3D(*self.p1.normal))
+		if dot_prod <= 0:
+			return
+
 
 		xp1 = self.p1.dot_prod(dir1) / (dir1.length() * camera_dist)
 		yp1 = self.p1.dot_prod(dir2) / (dir2.length() * camera_dist)
@@ -305,13 +327,17 @@ class Scene3D:
 		scene = pywavefront.Wavefront(self.file_name, strict=True, encoding="utf-8", collect_faces=True, parse=True, create_materials=True, cache=False)
 		for name, material in scene.materials.items():
 			print(material.vertex_format)
+
 			v = material.vertices
-
 			vectors = []
-			for index in range(0, len(v), 3):
-				vector = Vector3D(*v[index:index+3])
-				vectors.append(vector)
-
+			if material.vertex_format == 'N3F_V3F':
+				for index in range(0, len(v), 6):
+					vector = Vector3D(*v[index+3:index+6], *v[index:index+3])
+					vectors.append(vector)
+			else:
+				for index in range(0, len(v), 3):
+					vector = Vector3D(*v[index:index + 3])
+					vectors.append(vector)
 			triangles = []
 			for index in range(0, len(vectors), 3):
 				triangle = Triangle3D(*vectors[index:index + 3])
@@ -325,7 +351,8 @@ class Scene3D:
 					index += 1
 					face.add(triangle)
 				self.objects.append(face)
-
+			for object in self.objects:
+				print(object)
 
 
 
