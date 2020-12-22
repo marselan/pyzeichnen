@@ -49,14 +49,6 @@ class Segment:
 		x, y = zip(*self.vectors)
 		plt.plot(x, y, color=color)
 
-class Point:
-	def __init__(self, x, y):
-		self.x = x
-		self.y = y
-
-	def draw(self, color='b'):
-		plt.plot([self.x], [self.y], marker='.', color=color)
-
 class Vector:
 	def __init__(self, tip, tail=(0,0)):
 		if isinstance(tip, numbers.Number):
