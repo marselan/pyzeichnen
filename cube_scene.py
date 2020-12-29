@@ -14,10 +14,14 @@ import numpy as np
 
 root = tki.Tk()
 
+
+box_size = 6
+
 camera_az = 0.0
 camera_elev = 0.0
 camera_ang = 0.0
 camera_dist = 1.0
+
 
 def draw(ax, cubes, color='b', camera_az=0.0, camera_elev=0.0, camera_ang=0.0):
     ext = 2.0
@@ -35,14 +39,14 @@ def draw(ax, cubes, color='b', camera_az=0.0, camera_elev=0.0, camera_ang=0.0):
     for cube in cubes:
         cube.draw(ax, color=color, camera_az=camera_az)
 
+
 scene = render.Scene3D('cube.obj')
 scene.parse_file()
-
 
 top1 = tki.Toplevel()
 top1.title("3D render")
 top1.wm_geometry("800x800+200+50")
-fig1 = Figure(figsize=(10,5), dpi=100)
+fig1 = Figure(figsize=(10, 5), dpi=100)
 canvas1 = FigureCanvasTkAgg(fig1, master=top1)
 plt1 = fig1.add_subplot(111, projection="3d")
 canvas1.get_tk_widget().pack(side=tki.TOP, fill=tki.BOTH, expand=1)
@@ -50,7 +54,7 @@ canvas1.get_tk_widget().pack(side=tki.TOP, fill=tki.BOTH, expand=1)
 top2 = tki.Toplevel()
 top2.title('Flat render')
 top2.wm_geometry("800x800+1200+50")
-fig2 = Figure(figsize=(10,5), dpi=100)
+fig2 = Figure(figsize=(10, 5), dpi=100)
 c2 = FigureCanvasTkAgg(fig2, master=top2)
 plt2 = fig2.add_subplot(111, aspect=1.0)
 c2.get_tk_widget().pack(side=tki.TOP, fill=tki.BOTH, expand=1)
@@ -62,11 +66,13 @@ def on_distance_changed(value):
     plt1.clear()
     plt2.clear()
     draw(plt1, [], color='k')
-    plt2.plot([-2, 2, 2, -2, -2], [-2, -2, 2, 2, -2], color='r')
+    plt2.plot([-box_size, box_size, box_size, -box_size, -box_size],
+              [-box_size, -box_size, box_size, box_size, -box_size], color='w')
     scene.camera_distance = camera_dist
     scene.project(plt2)
     canvas1.draw()
     c2.draw()
+
 
 def on_angle_changed(value):
     global camera_ang
@@ -74,11 +80,13 @@ def on_angle_changed(value):
     plt1.clear()
     plt2.clear()
     draw(plt1, [], color='k', camera_az=camera_az, camera_elev=camera_elev, camera_ang=camera_ang)
-    plt2.plot([-2, 2, 2, -2, -2], [-2, -2, 2, 2, -2], color='r')
+    plt2.plot([-box_size, box_size, box_size, -box_size, -box_size],
+              [-box_size, -box_size, box_size, box_size, -box_size], color='w')
     scene.camera_angle = camera_ang
     scene.project(plt2)
     canvas1.draw()
     c2.draw()
+
 
 def on_elevation_changed(value):
     global camera_elev
@@ -86,11 +94,13 @@ def on_elevation_changed(value):
     plt1.clear()
     plt2.clear()
     draw(plt1, [], color='k')
-    plt2.plot([-2, 2, 2, -2, -2], [-2, -2, 2, 2, -2], color='r')
+    plt2.plot([-box_size, box_size, box_size, -box_size, -box_size],
+              [-box_size, -box_size, box_size, box_size, -box_size], color='w')
     scene.camera_elevation = camera_elev
     scene.project(plt2)
     canvas1.draw()
     c2.draw()
+
 
 def on_azimuth_changed(value):
     global camera_az
@@ -98,33 +108,38 @@ def on_azimuth_changed(value):
     plt1.clear()
     plt2.clear()
     draw(plt1, [], color='k', camera_az=camera_az)
-    plt2.plot([-2, 2, 2, -2, -2], [-2, -2, 2, 2, -2], color='r')
+    plt2.plot([-box_size, box_size, box_size, -box_size, -box_size], [-box_size, -box_size, box_size, box_size, -box_size], color='w')
     scene.camera_azimuth = camera_az
     scene.project(plt2)
     canvas1.draw()
     c2.draw()
 
 
-distance = tki.Scale(top2, from_=1.0, to=8.0, resolution=.01, length=300, orient=tki.HORIZONTAL, command=on_distance_changed)
+distance = tki.Scale(top2, from_=1.0, to=8.0, resolution=.01, length=300, orient=tki.HORIZONTAL,
+                     command=on_distance_changed)
 distance.pack(side=tki.BOTTOM)
-angle = tki.Scale(top2, from_=-np.pi, to=np.pi, resolution=.01, length=300, orient=tki.HORIZONTAL, command=on_angle_changed)
+angle = tki.Scale(top2, from_=-np.pi, to=np.pi, resolution=.01, length=300, orient=tki.HORIZONTAL,
+                  command=on_angle_changed)
 angle.pack(side=tki.BOTTOM)
-elevation = tki.Scale(top2, from_=-np.pi, to=np.pi, resolution=.01, length=300, orient=tki.HORIZONTAL, command=on_elevation_changed)
+elevation = tki.Scale(top2, from_=-np.pi, to=np.pi, resolution=.01, length=300, orient=tki.HORIZONTAL,
+                      command=on_elevation_changed)
 elevation.pack(side=tki.BOTTOM)
-azimuth = tki.Scale(top2, from_=-np.pi, to=np.pi, resolution=.01, length=300, orient=tki.HORIZONTAL, command=on_azimuth_changed)
+azimuth = tki.Scale(top2, from_=-np.pi, to=np.pi, resolution=.01, length=300, orient=tki.HORIZONTAL,
+                    command=on_azimuth_changed)
 azimuth.pack(side=tki.BOTTOM)
+
 
 def on_closing():
     root.quit()
     root.destroy()
 
+
 top1.protocol("WM_DELETE_WINDOW", on_closing)
 top2.protocol("WM_DELETE_WINDOW", on_closing)
 root.withdraw()
 
-
 draw(plt1, [], color='k')
-plt2.plot([-2, 2, 2, -2, -2], [-2, -2, 2, 2, -2], color='r')
+plt2.plot([-box_size, box_size, box_size, -box_size, -box_size], [-box_size, -box_size, box_size, box_size, -box_size], color='w')
 scene.project(plt2)
 
 tki.mainloop()
