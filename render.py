@@ -4,8 +4,6 @@
 # Created by Mariano Arselan at 01-12-20
 #
 import pywavefront
-import matplotlib.pyplot as plt
-import numbers
 import math
 
 
@@ -229,12 +227,12 @@ class Scene3D:
         self.camera_distance = camera_dist
 
     def project(self, plt):
-        for object in self.objects:
-            object.project(plt,
-                           camera_az=self.camera_azimuth,
-                           camera_elev=self.camera_elevation,
-                           camera_ang=self.camera_angle,
-                           camera_dist=self.camera_distance)
+        for obj in self.objects:
+            obj.project(plt,
+                        camera_az=self.camera_azimuth,
+                        camera_elev=self.camera_elevation,
+                        camera_ang=self.camera_angle,
+                        camera_dist=self.camera_distance)
 
     def parse_file(self):
         scene = pywavefront.Wavefront(self.file_name, strict=True, encoding="utf-8", collect_faces=True, parse=True,
