@@ -15,12 +15,14 @@ import numpy as np
 root = tki.Tk()
 
 
-box_size = 6
+box_size = 4
 
 camera_az = 0.0
 camera_elev = 0.0
 camera_ang = 0.0
 camera_dist = 1.0
+
+light = render.Vector3D(0.3, 0.5, 0.8)
 
 
 def draw(ax, cubes, color='b', camera_az=0.0, camera_elev=0.0, camera_ang=0.0):
@@ -40,7 +42,7 @@ def draw(ax, cubes, color='b', camera_az=0.0, camera_elev=0.0, camera_ang=0.0):
         cube.draw(ax, color=color, camera_az=camera_az)
 
 
-scene = render.Scene3D('cube.obj')
+scene = render.Scene3D('sphere2.obj')
 scene.parse_file()
 
 top1 = tki.Toplevel()
@@ -69,7 +71,7 @@ def on_distance_changed(value):
     plt2.plot([-box_size, box_size, box_size, -box_size, -box_size],
               [-box_size, -box_size, box_size, box_size, -box_size], color='w')
     scene.camera_distance = camera_dist
-    scene.project(plt2)
+    scene.project(plt2, light)
     canvas1.draw()
     c2.draw()
 
@@ -83,7 +85,7 @@ def on_angle_changed(value):
     plt2.plot([-box_size, box_size, box_size, -box_size, -box_size],
               [-box_size, -box_size, box_size, box_size, -box_size], color='w')
     scene.camera_angle = camera_ang
-    scene.project(plt2)
+    scene.project(plt2, light)
     canvas1.draw()
     c2.draw()
 
@@ -97,7 +99,7 @@ def on_elevation_changed(value):
     plt2.plot([-box_size, box_size, box_size, -box_size, -box_size],
               [-box_size, -box_size, box_size, box_size, -box_size], color='w')
     scene.camera_elevation = camera_elev
-    scene.project(plt2)
+    scene.project(plt2, light)
     canvas1.draw()
     c2.draw()
 
@@ -110,7 +112,7 @@ def on_azimuth_changed(value):
     draw(plt1, [], color='k', camera_az=camera_az)
     plt2.plot([-box_size, box_size, box_size, -box_size, -box_size], [-box_size, -box_size, box_size, box_size, -box_size], color='w')
     scene.camera_azimuth = camera_az
-    scene.project(plt2)
+    scene.project(plt2, light)
     canvas1.draw()
     c2.draw()
 
@@ -140,6 +142,6 @@ root.withdraw()
 
 draw(plt1, [], color='k')
 plt2.plot([-box_size, box_size, box_size, -box_size, -box_size], [-box_size, -box_size, box_size, box_size, -box_size], color='w')
-scene.project(plt2)
+scene.project(plt2, light)
 
 tki.mainloop()

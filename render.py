@@ -45,9 +45,15 @@ class Function3D:
 
 
 class Vector3D:
-    def __init__(self, x, y, z, nX=0, nY=0, nZ=0):
+    def __init__(self, x, y, z, n_x=None, n_y=None, n_z=None):
         self.xyz = (x, y, z)
-        self.normal = (nX, nY, nZ)
+        if n_x is None:
+            n_x = x
+        if n_y is None:
+            n_y = y
+        if n_z is None:
+            n_z = z
+        self.normal = (n_x, n_y, n_z)
 
     def draw(self, ax, color='b', camera_az=0.0, camera_elev=0.0, camera_ang=0.0):
         x, y, z = self.xyz
@@ -170,7 +176,7 @@ class Triangle3D:
         s2.draw(ax, color=color, flat=flat, camera_az=camera_az)
         s3.draw(ax, color=color, flat=flat, camera_az=camera_az)
 
-    def project(self, plt, color='b', camera_az=0.0, camera_elev=0.0, camera_ang=0.0, camera_dist=1.0):
+    def project(self, plt, light=Vector3D(0, 0, 1), camera_az=0.0, camera_elev=0.0, camera_ang=0.0, camera_dist=1.0):
         x_rotation_matrix = rotation_matrix_axis_x(elevation=camera_elev)
         y_rotation_matrix = rotation_matrix_axis_y(azimuth=camera_az)
         z_rotation_matrix = rotation_matrix_axis_z(angle=camera_ang)
@@ -178,7 +184,8 @@ class Triangle3D:
         dir2 = z_rotation_matrix.prod(y_rotation_matrix.prod(x_rotation_matrix.prod(Vector3D(0, 1, 0))))
         dir3 = z_rotation_matrix.prod(y_rotation_matrix.prod(x_rotation_matrix.prod(Vector3D(0, 0, 1))))
 
-        dot_prod = dir3.dot_prod(Vector3D(*self.p1.normal))
+        triangle_norm = Vector3D(*self.p1.normal).norm()
+        dot_prod = dir3.dot_prod(triangle_norm)
         if dot_prod <= 0:
             return
 
@@ -188,6 +195,10 @@ class Triangle3D:
         yp2 = self.p2.dot_prod(dir2) / (dir2.length() * camera_dist)
         xp3 = self.p3.dot_prod(dir1) / (dir1.length() * camera_dist)
         yp3 = self.p3.dot_prod(dir2) / (dir2.length() * camera_dist)
+
+        light_norm = light.norm()
+        shadow = triangle_norm.dot_prod(light_norm)
+        color = (0, 0, max(shadow, 0))
 
         plt.fill([xp1, xp2, xp3], [yp1, yp2, yp3], color=color)
 
@@ -211,9 +222,9 @@ class Face3D:
         representation += " >"
         return representation
 
-    def project(self, plt, camera_az=0.0, camera_elev=0.0, camera_ang=0.0, camera_dist=1.0):
+    def project(self, plt, light=Vector3D(0, 0, 1), camera_az=0.0, camera_elev=0.0, camera_ang=0.0, camera_dist=1.0):
         for triangle in self.triangles:
-            triangle.project(plt, camera_az=camera_az, camera_elev=camera_elev, camera_ang=camera_ang,
+            triangle.project(plt, light=light, camera_az=camera_az, camera_elev=camera_elev, camera_ang=camera_ang,
                              camera_dist=camera_dist)
 
 
@@ -226,9 +237,10 @@ class Scene3D:
         self.camera_angle = camera_ang
         self.camera_distance = camera_dist
 
-    def project(self, plt):
+    def project(self, plt, light):
         for obj in self.objects:
             obj.project(plt,
+                        light=light,
                         camera_az=self.camera_azimuth,
                         camera_elev=self.camera_elevation,
                         camera_ang=self.camera_angle,
