@@ -6,13 +6,18 @@
 import pywavefront
 import math
 
-class Camera:
-    def __init__(self, p1, p2, p3, width, height):
-        self.p1 = p1
-        self.p2 = p2
-        self.p3 = p3
+
+class Frustum:
+    def __init__(self, width, height, front, rear, azimuth=0.0, elevation=0.0, angle=0.0):
         self.width = width
         self.height = height
+        self.front = front
+        self.rear = rear
+        self.azimuth = azimuth
+        self.elevation = elevation
+        self.angle = angle
+        self.width = width
+
 
 class Matrix3x3:
     def __init__(self, c00, c01, c02, c10, c11, c12, c20, c21, c22):
@@ -183,7 +188,8 @@ class Triangle3D:
         s2.draw(ax, color=color, flat=flat, camera_az=camera_az)
         s3.draw(ax, color=color, flat=flat, camera_az=camera_az)
 
-    def project_orthographic(self, plt, light=Vector3D(0, 0, 1), camera_az=0.0, camera_elev=0.0, camera_ang=0.0, camera_dist=1.0):
+    def project_orthographic(self, plt, light=Vector3D(0, 0, 1), camera_az=0.0, camera_elev=0.0, camera_ang=0.0,
+                             camera_dist=1.0):
         x_rotation_matrix = rotation_matrix_axis_x(elevation=camera_elev)
         y_rotation_matrix = rotation_matrix_axis_y(azimuth=camera_az)
         z_rotation_matrix = rotation_matrix_axis_z(angle=camera_ang)
@@ -209,10 +215,10 @@ class Triangle3D:
 
         plt.fill([xp1, xp2, xp3], [yp1, yp2, yp3], color=color)
 
-    def project(self, plt, light=Vector3D(0, 0, 1), camera_az=0.0, camera_elev=0.0, camera_ang=0.0, camera_dist=1.0):
-        x_rotation_matrix = rotation_matrix_axis_x(elevation=camera_elev)
-        y_rotation_matrix = rotation_matrix_axis_y(azimuth=camera_az)
-        z_rotation_matrix = rotation_matrix_axis_z(angle=camera_ang)
+    def project(self, plt, frustum, light=Vector3D(0, 0, 1)):
+        x_rotation_matrix = rotation_matrix_axis_x(elevation=frustum.elevation)
+        y_rotation_matrix = rotation_matrix_axis_y(azimuth=frustum.azimuth)
+        z_rotation_matrix = rotation_matrix_axis_z(angle=frustum.angle)
         dir1 = z_rotation_matrix.prod(y_rotation_matrix.prod(x_rotation_matrix.prod(Vector3D(1, 0, 0))))
         dir2 = z_rotation_matrix.prod(y_rotation_matrix.prod(x_rotation_matrix.prod(Vector3D(0, 1, 0))))
         dir3 = z_rotation_matrix.prod(y_rotation_matrix.prod(x_rotation_matrix.prod(Vector3D(0, 0, 1))))
@@ -222,14 +228,19 @@ class Triangle3D:
         if dot_prod <= 0:
             return
 
-        vanishing_point = camera_dist + 10.0
-        vc_distance = abs(vanishing_point - camera_dist)
+        # frustum.front is the camera distance
+        camera_dist = frustum.front
+        vanishing_point = frustum.front + 10.0
+        vc_distance = abs(vanishing_point - frustum.front)
 
         zp1 = self.p1.dot_prod(dir3) / dir3.length()
         zp2 = self.p2.dot_prod(dir3) / dir3.length()
         zp3 = self.p3.dot_prod(dir3) / dir3.length()
 
+        # check if z coords of the three points are inside the frustum
         if camera_dist <= zp1 or camera_dist <= zp2 or camera_dist <= zp3:
+            return
+        if zp1 <= frustum.rear or zp2 <= frustum.rear or zp2 <= frustum.rear:
             return
 
         vp1_dist = abs(vanishing_point - zp1)
@@ -276,29 +287,40 @@ class Face3D:
         representation += " >"
         return representation
 
-    def project(self, plt, light=Vector3D(0, 0, 1), camera_az=0.0, camera_elev=0.0, camera_ang=0.0, camera_dist=1.0):
+    def project(self, plt, frustum, light=Vector3D(0, 0, 1)):
         for triangle in self.triangles:
-            triangle.project(plt, light=light, camera_az=camera_az, camera_elev=camera_elev, camera_ang=camera_ang,
-                             camera_dist=camera_dist)
+            triangle.project(plt, frustum=frustum, light=light)
 
 
 class Scene3D:
-    def __init__(self, file_name, camera_az=0.0, camera_elev=0.0, camera_ang=0.0, camera_dist=1.0):
+    def __init__(self, file_name, plt, frustum, light):
         self.file_name = file_name
         self.objects = []
-        self.camera_azimuth = camera_az
-        self.camera_elevation = camera_elev
-        self.camera_angle = camera_ang
-        self.camera_distance = camera_dist
+        self.plt = plt
+        self.frustum = frustum
+        self.light = light
 
-    def project(self, plt, light):
+    def set_azimuth(self, azimuth):
+        self.frustum.azimuth = azimuth
+        self.project()
+
+    def set_elevation(self, elevation):
+        self.frustum.elevation = elevation
+        self.project()
+
+    def set_angle(self, angle):
+        self.frustum.angle = angle
+        self.project()
+
+    def set_camera_distance(self, camera_distance):
+        self.frustum.front = camera_distance
+        self.project()
+
+    def project(self):
         for obj in self.objects:
-            obj.project(plt,
-                        light=light,
-                        camera_az=self.camera_azimuth,
-                        camera_elev=self.camera_elevation,
-                        camera_ang=self.camera_angle,
-                        camera_dist=self.camera_distance)
+            obj.project(self.plt,
+                        frustum=self.frustum,
+                        light=self.light)
 
     def parse_file(self):
         scene = pywavefront.Wavefront(self.file_name, strict=True, encoding="utf-8", collect_faces=True, parse=True,

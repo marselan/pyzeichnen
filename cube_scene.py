@@ -14,15 +14,12 @@ import numpy as np
 
 root = tki.Tk()
 
-
 box_size = 4
 
-camera_az = 0.0
-camera_elev = 0.0
-camera_ang = 0.0
 camera_dist = 5.0
 
 light = render.Vector3D(0.3, 0.5, 0.8)
+frustum = render.Frustum(100, 100, camera_dist, -100.0)
 
 
 def draw(ax, cubes, color='b', camera_az=0.0, camera_elev=0.0, camera_ang=0.0):
@@ -42,10 +39,6 @@ def draw(ax, cubes, color='b', camera_az=0.0, camera_elev=0.0, camera_ang=0.0):
         cube.draw(ax, color=color, camera_az=camera_az)
 
 
-scene = render.Scene3D('sphere2.obj')
-scene.parse_file()
-scene.camera_distance = camera_dist
-
 top1 = tki.Toplevel()
 top1.title("3D render")
 top1.wm_geometry("800x800+200+50")
@@ -62,59 +55,47 @@ c2 = FigureCanvasTkAgg(fig2, master=top2)
 plt2 = fig2.add_subplot(111, aspect=1.0)
 c2.get_tk_widget().pack(side=tki.TOP, fill=tki.BOTH, expand=1)
 
+scene = render.Scene3D('sphere2.obj', plt2, frustum, light)
+scene.parse_file()
+scene.camera_distance = camera_dist
+
 
 def on_distance_changed(value):
     global camera_dist
     camera_dist = float(value)
-    plt1.clear()
     plt2.clear()
-    draw(plt1, [], color='k')
     plt2.plot([-box_size, box_size, box_size, -box_size, -box_size],
               [-box_size, -box_size, box_size, box_size, -box_size], color='w')
-    scene.camera_distance = camera_dist
-    scene.project(plt2, light)
-    canvas1.draw()
+    scene.set_camera_distance(camera_dist)
     c2.draw()
 
 
 def on_angle_changed(value):
-    global camera_ang
     camera_ang = float(value)
-    plt1.clear()
     plt2.clear()
-    draw(plt1, [], color='k', camera_az=camera_az, camera_elev=camera_elev, camera_ang=camera_ang)
     plt2.plot([-box_size, box_size, box_size, -box_size, -box_size],
               [-box_size, -box_size, box_size, box_size, -box_size], color='w')
-    scene.camera_angle = camera_ang
-    scene.project(plt2, light)
-    canvas1.draw()
+    scene.set_angle(camera_ang)
     c2.draw()
 
 
 def on_elevation_changed(value):
-    global camera_elev
     camera_elev = float(value)
-    plt1.clear()
     plt2.clear()
-    draw(plt1, [], color='k')
     plt2.plot([-box_size, box_size, box_size, -box_size, -box_size],
               [-box_size, -box_size, box_size, box_size, -box_size], color='w')
-    scene.camera_elevation = camera_elev
-    scene.project(plt2, light)
-    canvas1.draw()
+    scene.set_elevation(camera_elev)
+    scene.project()
     c2.draw()
 
 
 def on_azimuth_changed(value):
-    global camera_az
     camera_az = float(value)
-    plt1.clear()
     plt2.clear()
     draw(plt1, [], color='k', camera_az=camera_az)
-    plt2.plot([-box_size, box_size, box_size, -box_size, -box_size], [-box_size, -box_size, box_size, box_size, -box_size], color='w')
-    scene.camera_azimuth = camera_az
-    scene.project(plt2, light)
-    canvas1.draw()
+    plt2.plot([-box_size, box_size, box_size, -box_size, -box_size],
+              [-box_size, -box_size, box_size, box_size, -box_size], color='w')
+    scene.set_azimuth(camera_az)
     c2.draw()
 
 
@@ -142,7 +123,8 @@ top2.protocol("WM_DELETE_WINDOW", on_closing)
 root.withdraw()
 
 draw(plt1, [], color='k')
-plt2.plot([-box_size, box_size, box_size, -box_size, -box_size], [-box_size, -box_size, box_size, box_size, -box_size], color='w')
-scene.project(plt2, light)
+plt2.plot([-box_size, box_size, box_size, -box_size, -box_size], [-box_size, -box_size, box_size, box_size, -box_size],
+          color='w')
+scene.project()
 
 tki.mainloop()
