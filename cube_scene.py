@@ -20,7 +20,7 @@ box_size = 4
 camera_az = 0.0
 camera_elev = 0.0
 camera_ang = 0.0
-camera_dist = 1.0
+camera_dist = 5.0
 
 light = render.Vector3D(0.3, 0.5, 0.8)
 
@@ -44,6 +44,7 @@ def draw(ax, cubes, color='b', camera_az=0.0, camera_elev=0.0, camera_ang=0.0):
 
 scene = render.Scene3D('sphere2.obj')
 scene.parse_file()
+scene.camera_distance = camera_dist
 
 top1 = tki.Toplevel()
 top1.title("3D render")
@@ -117,7 +118,7 @@ def on_azimuth_changed(value):
     c2.draw()
 
 
-distance = tki.Scale(top2, from_=1.0, to=8.0, resolution=.01, length=300, orient=tki.HORIZONTAL,
+distance = tki.Scale(top2, from_=camera_dist, to=8.0, resolution=.01, length=300, orient=tki.HORIZONTAL,
                      command=on_distance_changed)
 distance.pack(side=tki.BOTTOM)
 angle = tki.Scale(top2, from_=-np.pi, to=np.pi, resolution=.01, length=300, orient=tki.HORIZONTAL,

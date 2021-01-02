@@ -6,6 +6,13 @@
 import pywavefront
 import math
 
+class Camera:
+    def __init__(self, p1, p2, p3, width, height):
+        self.p1 = p1
+        self.p2 = p2
+        self.p3 = p3
+        self.width = width
+        self.height = height
 
 class Matrix3x3:
     def __init__(self, c00, c01, c02, c10, c11, c12, c20, c21, c22):
@@ -176,7 +183,7 @@ class Triangle3D:
         s2.draw(ax, color=color, flat=flat, camera_az=camera_az)
         s3.draw(ax, color=color, flat=flat, camera_az=camera_az)
 
-    def project(self, plt, light=Vector3D(0, 0, 1), camera_az=0.0, camera_elev=0.0, camera_ang=0.0, camera_dist=1.0):
+    def project_orthographic(self, plt, light=Vector3D(0, 0, 1), camera_az=0.0, camera_elev=0.0, camera_ang=0.0, camera_dist=1.0):
         x_rotation_matrix = rotation_matrix_axis_x(elevation=camera_elev)
         y_rotation_matrix = rotation_matrix_axis_y(azimuth=camera_az)
         z_rotation_matrix = rotation_matrix_axis_z(angle=camera_ang)
@@ -195,6 +202,53 @@ class Triangle3D:
         yp2 = self.p2.dot_prod(dir2) / (dir2.length() * camera_dist)
         xp3 = self.p3.dot_prod(dir1) / (dir1.length() * camera_dist)
         yp3 = self.p3.dot_prod(dir2) / (dir2.length() * camera_dist)
+
+        light_norm = light.norm()
+        shadow = triangle_norm.dot_prod(light_norm)
+        color = (0, 0, max(shadow, 0))
+
+        plt.fill([xp1, xp2, xp3], [yp1, yp2, yp3], color=color)
+
+    def project(self, plt, light=Vector3D(0, 0, 1), camera_az=0.0, camera_elev=0.0, camera_ang=0.0, camera_dist=1.0):
+        x_rotation_matrix = rotation_matrix_axis_x(elevation=camera_elev)
+        y_rotation_matrix = rotation_matrix_axis_y(azimuth=camera_az)
+        z_rotation_matrix = rotation_matrix_axis_z(angle=camera_ang)
+        dir1 = z_rotation_matrix.prod(y_rotation_matrix.prod(x_rotation_matrix.prod(Vector3D(1, 0, 0))))
+        dir2 = z_rotation_matrix.prod(y_rotation_matrix.prod(x_rotation_matrix.prod(Vector3D(0, 1, 0))))
+        dir3 = z_rotation_matrix.prod(y_rotation_matrix.prod(x_rotation_matrix.prod(Vector3D(0, 0, 1))))
+
+        triangle_norm = Vector3D(*self.p1.normal).norm()
+        dot_prod = dir3.dot_prod(triangle_norm)
+        if dot_prod <= 0:
+            return
+
+        vanishing_point = camera_dist + 10.0
+        vc_distance = abs(vanishing_point - camera_dist)
+
+        zp1 = self.p1.dot_prod(dir3) / dir3.length()
+        zp2 = self.p2.dot_prod(dir3) / dir3.length()
+        zp3 = self.p3.dot_prod(dir3) / dir3.length()
+
+        if camera_dist <= zp1 or camera_dist <= zp2 or camera_dist <= zp3:
+            return
+
+        vp1_dist = abs(vanishing_point - zp1)
+        xp1 = self.p1.dot_prod(dir1) / dir1.length()
+        xp1 = xp1 * vc_distance / vp1_dist
+        yp1 = self.p1.dot_prod(dir2) / dir2.length()
+        yp1 = yp1 * vc_distance / vp1_dist
+
+        vp2_dist = abs(vanishing_point - zp2)
+        xp2 = self.p2.dot_prod(dir1) / dir1.length()
+        xp2 = xp2 * vc_distance / vp2_dist
+        yp2 = self.p2.dot_prod(dir2) / dir2.length()
+        yp2 = yp2 * vc_distance / vp2_dist
+
+        vp3_dist = abs(vanishing_point - zp3)
+        xp3 = self.p3.dot_prod(dir1) / dir1.length()
+        xp3 = xp3 * vc_distance / vp3_dist
+        yp3 = self.p3.dot_prod(dir2) / dir2.length()
+        yp3 = yp3 * vc_distance / vp3_dist
 
         light_norm = light.norm()
         shadow = triangle_norm.dot_prod(light_norm)
