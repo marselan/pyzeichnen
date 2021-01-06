@@ -174,11 +174,41 @@ class Segment3D:
         plt.plot([xp1, xp2], [yp1, yp2], color=color)
 
 
+class Line3D:
+    def __init__(self, p1, p2):
+        self.p1 = p1
+        self.p2 = p2
+        self.direction = p2.sub(p1)
+
+    def get_coord_for_param(self, t):
+        return self.direction.scalar_prod(t).add(self.p1)
+
+
 class Triangle3D:
     def __init__(self, p1, p2, p3):
         self.p1 = p1
         self.p2 = p2
         self.p3 = p3
+        v1 = p2.sub(p1)
+        v2 = p3.sub(p1)
+        self.normal = v1.cross_prod(v2)
+
+    def intersection_point(self, line):
+        xp, yp, zp = self.p1.components()
+        a, b, c = self.normal.components()
+        print("plane normal")
+        print((a,b,c))
+        d = -a * xp - b * yp - c * zp
+        print(d)
+        x1, y1, z1 = line.p1.components()
+        v1, v2, v3 = line.direction.components()
+        denominator = a * v1 + b * v2 + c * v3
+        if denominator == 0:
+            return None
+        # alpha is the parameter in the parametric equation of the line at the point of intersection
+        alpha = -(a * x1 + b * y1 + c * z1 + d) / denominator
+        print(alpha)
+        return Vector3D(x1 + alpha * v1, y1 + alpha * v2, z1 + alpha * v3)
 
     def draw(self, ax, color='b', flat=False, camera_az=0.0):
         s1 = Segment3D(self.p1, self.p2)
@@ -223,7 +253,8 @@ class Triangle3D:
         dir2 = z_rotation_matrix.prod(y_rotation_matrix.prod(x_rotation_matrix.prod(Vector3D(0, 1, 0))))
         dir3 = z_rotation_matrix.prod(y_rotation_matrix.prod(x_rotation_matrix.prod(Vector3D(0, 0, 1))))
 
-        triangle_norm = Vector3D(*self.p1.normal).norm()
+        #triangle_norm = Vector3D(*self.p1.normal).norm()
+        triangle_norm = self.normal.norm()
         dot_prod = dir3.dot_prod(triangle_norm)
         if dot_prod <= 0:
             return
@@ -351,3 +382,13 @@ class Scene3D:
                     index += 1
                     face.add(triangle)
                 self.objects.append(face)
+
+
+line = Line3D(Vector3D(0, 1, 3), Vector3D(1, 1, 4))
+
+p1 = Vector3D(1, 1, 0)
+p2 = Vector3D(0, 0, -1)
+p3 = Vector3D(2, 1, -2)
+
+t = Triangle3D(p1, p2, p3)
+print(t.intersection_point(line))
