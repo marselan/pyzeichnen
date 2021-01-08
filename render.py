@@ -5,7 +5,9 @@
 #
 import pywavefront
 import math
-
+import random
+from matplotlib import pyplot
+from matplotlib.patches import Polygon
 
 class Frustum:
     def __init__(self, width, height, front, rear, azimuth=0.0, elevation=0.0, angle=0.0):
@@ -89,6 +91,18 @@ class Vector3D:
 
     def components(self):
         return self.xyz
+
+    def x(self):
+        x, _, _ = self.components()
+        return x
+
+    def y(self):
+        _, y, _ = self.components()
+        return y
+
+    def z(self):
+        _, _, z = self.components()
+        return z
 
     def add(self, vector):
         x1, y1, z1 = self.xyz
@@ -196,19 +210,29 @@ class Triangle3D:
     def intersection_point(self, line):
         xp, yp, zp = self.p1.components()
         a, b, c = self.normal.components()
-        print("plane normal")
-        print((a,b,c))
         d = -a * xp - b * yp - c * zp
-        print(d)
         x1, y1, z1 = line.p1.components()
         v1, v2, v3 = line.direction.components()
         denominator = a * v1 + b * v2 + c * v3
         if denominator == 0:
+            print("denominator 0")
             return None
         # alpha is the parameter in the parametric equation of the line at the point of intersection
         alpha = -(a * x1 + b * y1 + c * z1 + d) / denominator
-        print(alpha)
-        return Vector3D(x1 + alpha * v1, y1 + alpha * v2, z1 + alpha * v3)
+
+        # intersection point = (x, y, z)
+        x = x1 + alpha * v1
+        y = y1 + alpha * v2
+        z = z1 + alpha * v3
+
+        # check if the intersection point is inside the triangle
+        side_1 = (x - p2.x()) * (p1.y() - p2.y()) - (p1.x() - p2.x()) * (y - p2.y())
+        side_2 = (x - p3.x()) * (p2.y() - p3.y()) - (p2.x() - p3.x()) * (y - p3.y())
+        side_3 = (x - p1.x()) * (p3.y() - p1.y()) - (p3.x() - p1.x()) * (y - p1.y())
+        if (side_1 < 0.0) == (side_2 < 0.0) == (side_3 < 0.0):
+            return Vector3D(x, y, z)
+
+        return None
 
     def draw(self, ax, color='b', flat=False, camera_az=0.0):
         s1 = Segment3D(self.p1, self.p2)
@@ -384,11 +408,27 @@ class Scene3D:
                 self.objects.append(face)
 
 
-line = Line3D(Vector3D(0, 1, 3), Vector3D(1, 1, 4))
-
 p1 = Vector3D(1, 1, 0)
-p2 = Vector3D(0, 0, -1)
-p3 = Vector3D(2, 1, -2)
+p2 = Vector3D(0, 0, 0)
+p3 = Vector3D(2, 1, 0)
+
+triang = ((1, 1), (0, 0), (2, 1))
+count_points = 1000
+figure = pyplot.figure()
+axes = figure.add_subplot(111, aspect='equal')
+axes.set_xlim(0, 2)
+axes.set_ylim(0, 2)
+axes.add_patch(Polygon(triang, linewidth=1, edgecolor='k', facecolor='none'))
 
 t = Triangle3D(p1, p2, p3)
-print(t.intersection_point(line))
+
+for i in range(count_points):
+    x = random.uniform(0, 2)
+    y = random.uniform(0, 2)
+    l = Line3D(Vector3D(x, y, 1), Vector3D(x, y, 0))
+    if t.intersection_point(l) is None:
+        pyplot.plot(x, y, '.g')
+    else:
+        pyplot.plot(x, y, '.b')
+
+pyplot.show()
