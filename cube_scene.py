@@ -9,7 +9,7 @@ import render
 import tkinter as tki
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.figure import Figure
-import math
+from tkinter import *
 import numpy as np
 
 root = tki.Tk()
@@ -38,17 +38,14 @@ def draw(ax, cubes, color='b', camera_az=0.0, camera_elev=0.0, camera_ang=0.0):
     for cube in cubes:
         cube.draw(ax, color=color, camera_az=camera_az)
 
-
 top1 = tki.Toplevel()
-top1.title("3D render")
-top1.wm_geometry("800x800+200+50")
+top1.title("Control Panel")
+top1.wm_geometry("400x800+20+50")
 fig1 = Figure(figsize=(10, 5), dpi=100)
 canvas1 = FigureCanvasTkAgg(fig1, master=top1)
-plt1 = fig1.add_subplot(111, projection="3d")
-canvas1.get_tk_widget().pack(side=tki.TOP, fill=tki.BOTH, expand=1)
 
 top2 = tki.Toplevel()
-top2.title('Flat render')
+top2.title('Render')
 top2.wm_geometry("800x800+1200+50")
 fig2 = Figure(figsize=(10, 5), dpi=100)
 c2 = FigureCanvasTkAgg(fig2, master=top2)
@@ -92,25 +89,38 @@ def on_elevation_changed(value):
 def on_azimuth_changed(value):
     camera_az = float(value)
     plt2.clear()
-    draw(plt1, [], color='k', camera_az=camera_az)
     plt2.plot([-box_size, box_size, box_size, -box_size, -box_size],
               [-box_size, -box_size, box_size, box_size, -box_size], color='w')
     scene.set_azimuth(camera_az)
     c2.draw()
 
 
-distance = tki.Scale(top2, from_=camera_dist, to=8.0, resolution=.01, length=300, orient=tki.HORIZONTAL,
-                     command=on_distance_changed)
-distance.pack(side=tki.BOTTOM)
-angle = tki.Scale(top2, from_=-np.pi, to=np.pi, resolution=.01, length=300, orient=tki.HORIZONTAL,
-                  command=on_angle_changed)
-angle.pack(side=tki.BOTTOM)
-elevation = tki.Scale(top2, from_=-np.pi, to=np.pi, resolution=.01, length=300, orient=tki.HORIZONTAL,
-                      command=on_elevation_changed)
-elevation.pack(side=tki.BOTTOM)
-azimuth = tki.Scale(top2, from_=-np.pi, to=np.pi, resolution=.01, length=300, orient=tki.HORIZONTAL,
+camera_label = tki.Label(top1, text="Camera")
+camera_label.grid(row=0, column=0, columnspan=2)
+
+az_label = tki.Label(top1, text="Azimuth")
+az_label.grid(row=1, column=0, sticky=W)
+azimuth = tki.Scale(top1, from_=-np.pi, to=np.pi, resolution=.01, length=300, orient=tki.HORIZONTAL,
                     command=on_azimuth_changed)
-azimuth.pack(side=tki.BOTTOM)
+azimuth.grid(row=1, column=1, sticky=W)
+
+elev_label = tki.Label(top1, text="Elevation")
+elev_label.grid(row=2, column=0, sticky=W)
+elevation = tki.Scale(top1, from_=-np.pi, to=np.pi, resolution=.01, length=300, orient=tki.HORIZONTAL,
+                      command=on_elevation_changed)
+elevation.grid(row=2, column=1, sticky=W)
+
+ang_label = tki.Label(top1, text="Angle")
+ang_label.grid(row=3, column=0, sticky=W)
+angle = tki.Scale(top1, from_=-np.pi, to=np.pi, resolution=.01, length=300, orient=tki.HORIZONTAL,
+                  command=on_angle_changed)
+angle.grid(row=3, column=1, sticky=W)
+
+dist_label = tki.Label(top1, text="Distance")
+dist_label.grid(row=4, column=0, sticky=W)
+distance = tki.Scale(top1, from_=camera_dist, to=8.0, resolution=.01, length=300, orient=tki.HORIZONTAL,
+                     command=on_distance_changed)
+distance.grid(row=4, column=1, sticky=W)
 
 
 def on_closing():
@@ -122,7 +132,6 @@ top1.protocol("WM_DELETE_WINDOW", on_closing)
 top2.protocol("WM_DELETE_WINDOW", on_closing)
 root.withdraw()
 
-draw(plt1, [], color='k')
 plt2.plot([-box_size, box_size, box_size, -box_size, -box_size], [-box_size, -box_size, box_size, box_size, -box_size],
           color='w')
 scene.project()

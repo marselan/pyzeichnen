@@ -408,27 +408,28 @@ class Scene3D:
                 self.objects.append(face)
 
 
-p1 = Vector3D(1, 1, 0)
-p2 = Vector3D(0, 0, 0)
-p3 = Vector3D(2, 1, 0)
+if __name__ == '__main__':
+    p1 = Vector3D(1, 1, 0)
+    p2 = Vector3D(0, 0, 0)
+    p3 = Vector3D(2, 1, 0)
 
-triang = ((1, 1), (0, 0), (2, 1))
-count_points = 1000
-figure = pyplot.figure()
-axes = figure.add_subplot(111, aspect='equal')
-axes.set_xlim(0, 2)
-axes.set_ylim(0, 2)
-axes.add_patch(Polygon(triang, linewidth=1, edgecolor='k', facecolor='none'))
+    triang = ((1, 1), (0, 0), (2, 1))
+    count_points = 1000
+    figure = pyplot.figure()
+    axes = figure.add_subplot(111, aspect='equal')
+    axes.set_xlim(0, 2)
+    axes.set_ylim(0, 2)
+    axes.add_patch(Polygon(triang, linewidth=1, edgecolor='k', facecolor='none'))
 
-t = Triangle3D(p1, p2, p3)
+    t = Triangle3D(p1, p2, p3)
 
-for i in range(count_points):
-    x = random.uniform(0, 2)
-    y = random.uniform(0, 2)
-    l = Line3D(Vector3D(x, y, 1), Vector3D(x, y, 0))
-    if t.intersection_point(l) is None:
-        pyplot.plot(x, y, '.g')
-    else:
-        pyplot.plot(x, y, '.b')
+    for i in range(count_points):
+        x = random.uniform(0, 2)
+        y = random.uniform(0, 2)
+        l = Line3D(Vector3D(x, y, 1), Vector3D(x, y, 0))
+        if t.intersection_point(l) is None:
+            pyplot.plot(x, y, '.g')
+        else:
+            pyplot.plot(x, y, '.b')
 
-pyplot.show()
+    pyplot.show()
