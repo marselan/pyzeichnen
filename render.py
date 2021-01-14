@@ -9,6 +9,7 @@ import random
 from matplotlib import pyplot
 from matplotlib.patches import Polygon
 
+
 class Frustum:
     def __init__(self, width, height, front, rear, azimuth=0.0, elevation=0.0, angle=0.0):
         self.width = width
@@ -19,6 +20,34 @@ class Frustum:
         self.elevation = elevation
         self.angle = angle
         self.width = width
+        self.dir1 = Vector3D(1, 0, 0)
+        self.dir2 = Vector3D(0, 1, 0)
+        self.dir3 = Vector3D(0, 0, 1)
+        self.update_base()
+
+    def update_base(self):
+        x_rotation_matrix = rotation_matrix_axis_x(elevation=self.elevation)
+        y_rotation_matrix = rotation_matrix_axis_y(azimuth=self.azimuth)
+        z_rotation_matrix = rotation_matrix_axis_z(angle=self.angle)
+        self.dir1 = z_rotation_matrix.prod(y_rotation_matrix.prod(x_rotation_matrix.prod(Vector3D(1, 0, 0))))
+        self.dir2 = z_rotation_matrix.prod(y_rotation_matrix.prod(x_rotation_matrix.prod(Vector3D(0, 1, 0))))
+        self.dir3 = z_rotation_matrix.prod(y_rotation_matrix.prod(x_rotation_matrix.prod(Vector3D(0, 0, 1))))
+
+    def set_azimuth(self, azimuth):
+        self.azimuth = azimuth
+        self.update_base()
+
+    def set_elevation(self, elevation):
+        self.elevation = elevation
+        self.update_base()
+
+    def set_angle(self, angle):
+        self.angle = angle
+        self.update_base()
+
+    def set_distance(self, distance):
+        self.front = distance
+        self.update_base()
 
 
 class Matrix3x3:
@@ -234,14 +263,6 @@ class Triangle3D:
 
         return None
 
-    def draw(self, ax, color='b', flat=False, camera_az=0.0):
-        s1 = Segment3D(self.p1, self.p2)
-        s2 = Segment3D(self.p1, self.p3)
-        s3 = Segment3D(self.p2, self.p3)
-        s1.draw(ax, color=color, flat=flat, camera_az=camera_az)
-        s2.draw(ax, color=color, flat=flat, camera_az=camera_az)
-        s3.draw(ax, color=color, flat=flat, camera_az=camera_az)
-
     def project_orthographic(self, plt, light=Vector3D(0, 0, 1), camera_az=0.0, camera_elev=0.0, camera_ang=0.0,
                              camera_dist=1.0):
         x_rotation_matrix = rotation_matrix_axis_x(elevation=camera_elev)
@@ -270,16 +291,11 @@ class Triangle3D:
         plt.fill([xp1, xp2, xp3], [yp1, yp2, yp3], color=color)
 
     def project(self, plt, frustum, light=Vector3D(0, 0, 1)):
-        x_rotation_matrix = rotation_matrix_axis_x(elevation=frustum.elevation)
-        y_rotation_matrix = rotation_matrix_axis_y(azimuth=frustum.azimuth)
-        z_rotation_matrix = rotation_matrix_axis_z(angle=frustum.angle)
-        dir1 = z_rotation_matrix.prod(y_rotation_matrix.prod(x_rotation_matrix.prod(Vector3D(1, 0, 0))))
-        dir2 = z_rotation_matrix.prod(y_rotation_matrix.prod(x_rotation_matrix.prod(Vector3D(0, 1, 0))))
-        dir3 = z_rotation_matrix.prod(y_rotation_matrix.prod(x_rotation_matrix.prod(Vector3D(0, 0, 1))))
-
-        #triangle_norm = Vector3D(*self.p1.normal).norm()
+        dir1 = frustum.dir1
+        dir2 = frustum.dir2
+        dir3 = frustum.di3
         triangle_norm = self.normal.norm()
-        dot_prod = dir3.dot_prod(triangle_norm)
+        dot_prod = frustum.dir3.dot_prod(triangle_norm)
         if dot_prod <= 0:
             return
 
@@ -320,7 +336,55 @@ class Triangle3D:
         shadow = triangle_norm.dot_prod(light_norm)
         color = (0, 0, max(shadow, 0))
 
-        plt.fill([xp1, xp2, xp3], [yp1, yp2, yp3], color=color)
+        plt.fill([self.p1.x(), self.p2.x(), self.p3.x()], [self.p1.y(), self.p2.y(), self.p3.y()], color=color)
+
+    def transform(self, frustum):
+        dir1 = frustum.dir1
+        dir2 = frustum.dir2
+        dir3 = frustum.dir3
+
+        triangle_norm = self.normal.norm()
+        dot_prod = dir3.dot_prod(triangle_norm)
+        if dot_prod <= 0:
+            return None
+
+        # frustum.front is the camera distance
+        camera_dist = frustum.front
+        vanishing_point = frustum.front + 10.0
+        vc_distance = abs(vanishing_point - frustum.front)
+
+        zp1 = self.p1.dot_prod(dir3) / dir3.length()
+        zp2 = self.p2.dot_prod(dir3) / dir3.length()
+        zp3 = self.p3.dot_prod(dir3) / dir3.length()
+
+        # check if z coords of the three points are inside the frustum
+        if camera_dist <= zp1 or camera_dist <= zp2 or camera_dist <= zp3:
+            return None
+        if zp1 <= frustum.rear or zp2 <= frustum.rear or zp2 <= frustum.rear:
+            return None
+
+        vp1_dist = abs(vanishing_point - zp1)
+        xp1 = self.p1.dot_prod(dir1) / dir1.length()
+        xp1 = xp1 * vc_distance / vp1_dist
+        yp1 = self.p1.dot_prod(dir2) / dir2.length()
+        yp1 = yp1 * vc_distance / vp1_dist
+
+        vp2_dist = abs(vanishing_point - zp2)
+        xp2 = self.p2.dot_prod(dir1) / dir1.length()
+        xp2 = xp2 * vc_distance / vp2_dist
+        yp2 = self.p2.dot_prod(dir2) / dir2.length()
+        yp2 = yp2 * vc_distance / vp2_dist
+
+        vp3_dist = abs(vanishing_point - zp3)
+        xp3 = self.p3.dot_prod(dir1) / dir1.length()
+        xp3 = xp3 * vc_distance / vp3_dist
+        yp3 = self.p3.dot_prod(dir2) / dir2.length()
+        yp3 = yp3 * vc_distance / vp3_dist
+
+        tp1 = Vector3D(xp1, yp1, zp1)
+        tp2 = Vector3D(xp2, yp2, zp2)
+        tp3 = Vector3D(xp3, yp3, zp3)
+        return Triangle3D(tp1, tp2, tp3)
 
     def __repr__(self):
         return f'Triangle [ {self.p1}, {self.p2}, {self.p3} ] '

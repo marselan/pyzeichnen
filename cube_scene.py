@@ -21,23 +21,6 @@ camera_dist = 5.0
 light = render.Vector3D(0.3, 0.5, 0.8)
 frustum = render.Frustum(100, 100, camera_dist, -100.0)
 
-
-def draw(ax, cubes, color='b', camera_az=0.0, camera_elev=0.0, camera_ang=0.0):
-    ext = 2.0
-    ax.plot([-ext, ext], [0, 0], [0, 0], '--', color='gray')
-    ax.plot([0, 0], [-ext, ext], [0, 0], '--', color='gray')
-    ax.plot([0, 0], [0, 0], [-ext, ext], '--', color='gray')
-    dir1 = render.Vector3D(1, 0, 0)
-    dir2 = render.Vector3D(0, 1, 0)
-    dir3 = render.Vector3D(0, 0, 1)
-    dir1.draw(plt1, color='r', camera_az=camera_az, camera_elev=camera_elev, camera_ang=camera_ang)
-    dir2.draw(plt1, color='g', camera_az=camera_az, camera_elev=camera_elev, camera_ang=camera_ang)
-    dir3.draw(plt1, color='b', camera_az=camera_az, camera_elev=camera_elev, camera_ang=camera_ang)
-    a = dir1.add(dir2).add(dir3)
-    a.draw(plt1, color='k', camera_az=camera_az, camera_elev=camera_elev, camera_ang=camera_ang)
-    for cube in cubes:
-        cube.draw(ax, color=color, camera_az=camera_az)
-
 top1 = tki.Toplevel()
 top1.title("Control Panel")
 top1.wm_geometry("400x800+20+50")
@@ -99,25 +82,25 @@ camera_label = tki.Label(top1, text="Camera")
 camera_label.grid(row=0, column=0, columnspan=2)
 
 az_label = tki.Label(top1, text="Azimuth")
-az_label.grid(row=1, column=0, sticky=W)
+az_label.grid(row=1, column=0, sticky=W+S)
 azimuth = tki.Scale(top1, from_=-np.pi, to=np.pi, resolution=.01, length=300, orient=tki.HORIZONTAL,
                     command=on_azimuth_changed)
 azimuth.grid(row=1, column=1, sticky=W)
 
 elev_label = tki.Label(top1, text="Elevation")
-elev_label.grid(row=2, column=0, sticky=W)
+elev_label.grid(row=2, column=0, sticky=W+S)
 elevation = tki.Scale(top1, from_=-np.pi, to=np.pi, resolution=.01, length=300, orient=tki.HORIZONTAL,
                       command=on_elevation_changed)
 elevation.grid(row=2, column=1, sticky=W)
 
 ang_label = tki.Label(top1, text="Angle")
-ang_label.grid(row=3, column=0, sticky=W)
+ang_label.grid(row=3, column=0, sticky=W+S)
 angle = tki.Scale(top1, from_=-np.pi, to=np.pi, resolution=.01, length=300, orient=tki.HORIZONTAL,
                   command=on_angle_changed)
 angle.grid(row=3, column=1, sticky=W)
 
 dist_label = tki.Label(top1, text="Distance")
-dist_label.grid(row=4, column=0, sticky=W)
+dist_label.grid(row=4, column=0, sticky=W+S)
 distance = tki.Scale(top1, from_=camera_dist, to=8.0, resolution=.01, length=300, orient=tki.HORIZONTAL,
                      command=on_distance_changed)
 distance.grid(row=4, column=1, sticky=W)
