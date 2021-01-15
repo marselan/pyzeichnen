@@ -19,7 +19,7 @@ box_size = 4
 camera_dist = 5.0
 
 light = render.Vector3D(0.3, 0.5, 0.8)
-frustum = render.Frustum(100, 100, camera_dist, -100.0)
+frustum = render.Frustum(4, 4, camera_dist, -100.0, 100, 100)
 
 top1 = tki.Toplevel()
 top1.title("Control Panel")
@@ -35,7 +35,7 @@ c2 = FigureCanvasTkAgg(fig2, master=top2)
 plt2 = fig2.add_subplot(111, aspect=1.0)
 c2.get_tk_widget().pack(side=tki.TOP, fill=tki.BOTH, expand=1)
 
-scene = render.Scene3D('sphere2.obj', plt2, frustum, light)
+scene = render.Scene3D('cube.obj', plt2, frustum, light)
 scene.parse_file()
 scene.camera_distance = camera_dist
 
@@ -65,7 +65,6 @@ def on_elevation_changed(value):
     plt2.plot([-box_size, box_size, box_size, -box_size, -box_size],
               [-box_size, -box_size, box_size, box_size, -box_size], color='w')
     scene.set_elevation(camera_elev)
-    scene.project()
     c2.draw()
 
 
@@ -117,6 +116,6 @@ root.withdraw()
 
 plt2.plot([-box_size, box_size, box_size, -box_size, -box_size], [-box_size, -box_size, box_size, box_size, -box_size],
           color='w')
-scene.project()
+scene.project_fast()
 
 tki.mainloop()

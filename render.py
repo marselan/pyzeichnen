@@ -11,11 +11,13 @@ from matplotlib.patches import Polygon
 
 
 class Frustum:
-    def __init__(self, width, height, front, rear, azimuth=0.0, elevation=0.0, angle=0.0):
+    def __init__(self, width, height, front, rear, x_res, y_res, azimuth=0.0, elevation=0.0, angle=0.0):
         self.width = width
         self.height = height
         self.front = front
         self.rear = rear
+        self.x_res = x_res
+        self.y_res = y_res
         self.azimuth = azimuth
         self.elevation = elevation
         self.angle = angle
@@ -23,7 +25,17 @@ class Frustum:
         self.dir1 = Vector3D(1, 0, 0)
         self.dir2 = Vector3D(0, 1, 0)
         self.dir3 = Vector3D(0, 0, 1)
+        self.pixel_size_x = width / x_res
+        self.pixel_size_y = height / y_res
+        self.half_pixel_x = self.pixel_size_x / 2
+        self.half_pixel_y = self.pixel_size_y / 2
+        self.half_width = width / 2
+        self.half_height = height / 2
+
         self.update_base()
+
+    def get_point_at(self, pixel_x, pixel_y):
+        return self.pixel_size_x * pixel_x - self.half_width + self.half_pixel_x, -self.pixel_size_y * pixel_y + self.half_height - self.half_pixel_y
 
     def update_base(self):
         x_rotation_matrix = rotation_matrix_axis_x(elevation=self.elevation)
@@ -98,25 +110,12 @@ class Vector3D:
             n_z = z
         self.normal = (n_x, n_y, n_z)
 
-    def draw(self, ax, color='b', camera_az=0.0, camera_elev=0.0, camera_ang=0.0):
-        x, y, z = self.xyz
-        x_rotation_matrix = rotation_matrix_axis_x(elevation=camera_elev)
-        y_rotation_matrix = rotation_matrix_axis_y(azimuth=camera_az)
-        z_rotation_matrix = rotation_matrix_axis_z(angle=camera_ang)
-        v = z_rotation_matrix.prod(y_rotation_matrix.prod(x_rotation_matrix.prod(self)))
-        vx, vy, vz = v.xyz
-        ax.plot([0, vx], [0, vy], [0, vz], color=color)
+    def rotate(self, dir1, dir2, dir3):
+        xp1 = self.dot_prod(dir1) / dir1.length()
+        yp1 = self.dot_prod(dir2) / dir2.length()
+        zp1 = self.dot_prod(dir3) / dir3.length()
 
-    def project(self, ax, color='b', camera_az=0.0, camera_elev=0.0, camera_ang=0.0):
-        x, y, z = self.xyz
-        x_rotation_matrix = rotation_matrix_axis_x(elevation=camera_elev)
-        y_rotation_matrix = rotation_matrix_axis_y(azimuth=camera_az)
-        z_rotation_matrix = rotation_matrix_axis_z(angle=camera_ang)
-        dir1 = z_rotation_matrix.prod(y_rotation_matrix.prod(x_rotation_matrix.prod(Vector3D(1, 0, 0))))
-        dir2 = z_rotation_matrix.prod(y_rotation_matrix.prod(x_rotation_matrix.prod(Vector3D(0, 1, 0))))
-        dir3 = z_rotation_matrix.prod(y_rotation_matrix.prod(x_rotation_matrix.prod(Vector3D(0, 0, 1))))
-        ax.plot([0, dir1.dot_prod(Vector3D(x, 0, 0))], [0, dir2.dot_prod(Vector3D(0, y, 0))],
-                [0, dir3.dot_prod(Vector3D(0, 0, z))], color=color)
+        return Vector3D(xp1, yp1, zp1)
 
     def components(self):
         return self.xyz
@@ -254,6 +253,10 @@ class Triangle3D:
         y = y1 + alpha * v2
         z = z1 + alpha * v3
 
+        p1 = self.p1
+        p2 = self.p2
+        p3 = self.p3
+
         # check if the intersection point is inside the triangle
         side_1 = (x - p2.x()) * (p1.y() - p2.y()) - (p1.x() - p2.x()) * (y - p2.y())
         side_2 = (x - p3.x()) * (p2.y() - p3.y()) - (p2.x() - p3.x()) * (y - p3.y())
@@ -293,50 +296,66 @@ class Triangle3D:
     def project(self, plt, frustum, light=Vector3D(0, 0, 1)):
         dir1 = frustum.dir1
         dir2 = frustum.dir2
-        dir3 = frustum.di3
+        dir3 = frustum.dir3
+
         triangle_norm = self.normal.norm()
-        dot_prod = frustum.dir3.dot_prod(triangle_norm)
+        dot_prod = dir3.dot_prod(triangle_norm)
         if dot_prod <= 0:
-            return
+            return None
 
         # frustum.front is the camera distance
-        camera_dist = frustum.front
-        vanishing_point = frustum.front + 10.0
-        vc_distance = abs(vanishing_point - frustum.front)
+        vc_distance = 10.0
+        vanishing_point = frustum.front + vc_distance
 
+        # project Z coords onto current base
         zp1 = self.p1.dot_prod(dir3) / dir3.length()
         zp2 = self.p2.dot_prod(dir3) / dir3.length()
         zp3 = self.p3.dot_prod(dir3) / dir3.length()
 
-        # check if z coords of the three points are inside the frustum
-        if camera_dist <= zp1 or camera_dist <= zp2 or camera_dist <= zp3:
-            return
+        # check if Z coords of the three points are inside the frustum
+        if frustum.front <= zp1 or frustum.front <= zp2 or frustum.front <= zp3:
+            return None
         if zp1 <= frustum.rear or zp2 <= frustum.rear or zp2 <= frustum.rear:
-            return
+            return None
 
-        vp1_dist = abs(vanishing_point - zp1)
+        # project X coords onto current base
         xp1 = self.p1.dot_prod(dir1) / dir1.length()
-        xp1 = xp1 * vc_distance / vp1_dist
-        yp1 = self.p1.dot_prod(dir2) / dir2.length()
-        yp1 = yp1 * vc_distance / vp1_dist
-
-        vp2_dist = abs(vanishing_point - zp2)
         xp2 = self.p2.dot_prod(dir1) / dir1.length()
-        xp2 = xp2 * vc_distance / vp2_dist
-        yp2 = self.p2.dot_prod(dir2) / dir2.length()
-        yp2 = yp2 * vc_distance / vp2_dist
-
-        vp3_dist = abs(vanishing_point - zp3)
         xp3 = self.p3.dot_prod(dir1) / dir1.length()
-        xp3 = xp3 * vc_distance / vp3_dist
-        yp3 = self.p3.dot_prod(dir2) / dir2.length()
-        yp3 = yp3 * vc_distance / vp3_dist
 
-        light_norm = light.norm()
+        # project Y coords onto current base
+        yp1 = self.p1.dot_prod(dir2) / dir2.length()
+        yp2 = self.p2.dot_prod(dir2) / dir2.length()
+        yp3 = self.p3.dot_prod(dir2) / dir2.length()
+
+        # create a triangle with the new coords
+        tp1 = Vector3D(xp1, yp1, zp1)
+        tp2 = Vector3D(xp2, yp2, zp2)
+        tp3 = Vector3D(xp3, yp3, zp3)
+        projected_triangle = Triangle3D(tp1, tp2, tp3)
+
+        # calculate light for the projected triangle
+        triangle_norm = projected_triangle.normal.norm()
+        transformed_light = light.rotate(frustum.dir1, frustum.dir2, frustum.dir3)
+        light_norm = transformed_light.norm()
         shadow = triangle_norm.dot_prod(light_norm)
         color = (0, 0, max(shadow, 0))
 
-        plt.fill([self.p1.x(), self.p2.x(), self.p3.x()], [self.p1.y(), self.p2.y(), self.p3.y()], color=color)
+        # project the new triangle onto the front plane of the frustum
+        vp1_dist = abs(vanishing_point - zp1)
+        xp1 = xp1 * vc_distance / vp1_dist
+        yp1 = yp1 * vc_distance / vp1_dist
+
+        vp2_dist = abs(vanishing_point - zp2)
+        xp2 = xp2 * vc_distance / vp2_dist
+        yp2 = yp2 * vc_distance / vp2_dist
+
+        vp3_dist = abs(vanishing_point - zp3)
+        xp3 = xp3 * vc_distance / vp3_dist
+        yp3 = yp3 * vc_distance / vp3_dist
+
+
+        plt.fill([xp1, xp2, xp3], [yp1, yp2, yp3], color=color)
 
     def transform(self, frustum):
         dir1 = frustum.dir1
@@ -414,32 +433,60 @@ class Face3D:
 class Scene3D:
     def __init__(self, file_name, plt, frustum, light):
         self.file_name = file_name
+        self.triangles = []
         self.objects = []
         self.plt = plt
         self.frustum = frustum
         self.light = light
 
     def set_azimuth(self, azimuth):
-        self.frustum.azimuth = azimuth
-        self.project()
+        self.frustum.set_azimuth(azimuth)
+        self.project_fast()
 
     def set_elevation(self, elevation):
-        self.frustum.elevation = elevation
-        self.project()
+        self.frustum.set_elevation(elevation)
+        self.project_fast()
 
     def set_angle(self, angle):
-        self.frustum.angle = angle
-        self.project()
+        self.frustum.set_angle(angle)
+        self.project_fast()
 
     def set_camera_distance(self, camera_distance):
-        self.frustum.front = camera_distance
-        self.project()
+        self.frustum.set_distance(camera_distance)
+        self.project_fast()
+
+    def project_fast(self):
+        for triangle in self.triangles:
+            triangle.project(self.plt, self.frustum, self.light)
 
     def project(self):
-        for obj in self.objects:
-            obj.project(self.plt,
-                        frustum=self.frustum,
-                        light=self.light)
+        for pixel_y in range(0, self.frustum.y_res):
+            for pixel_x in range(0, self.frustum.x_res):
+                point_x, point_y = self.frustum.get_point_at(pixel_x, pixel_y)
+                camera_distance = self.frustum.front
+                vanishing_point = camera_distance + 10.0
+                line = Line3D(Vector3D(point_x, point_y, self.frustum.front), Vector3D(0, 0, vanishing_point))
+                nearest_point = None
+                nearest_triangle = None
+                # print(f'({point_x},{point_y})')
+                for triangle in self.triangles:
+                    i_point = triangle.intersection_point(line)
+                    # print(i_point)
+                    if i_point is not None:
+                        if nearest_point is None:
+                            nearest_point = i_point
+                            nearest_triangle = triangle
+                        else:
+                            if i_point.z() < nearest_point.z():
+                                nearest_point = i_point
+                                nearest_triangle = triangle
+                if nearest_triangle is not None:
+                    transformed_triangle = nearest_triangle.transform(self.frustum)
+                    if transformed_triangle is not None:
+                        print(nearest_triangle)
+                        print(transformed_triangle)
+                        print("--")
+                        transformed_triangle.project(self.plt, self.frustum, self.light)
 
     def parse_file(self):
         scene = pywavefront.Wavefront(self.file_name, strict=True, encoding="utf-8", collect_faces=True, parse=True,
@@ -457,16 +504,16 @@ class Scene3D:
                 for index in range(0, len(v), 3):
                     vector = Vector3D(*v[index:index + 3])
                     vectors.append(vector)
-            triangles = []
+            self.triangles = []
             for index in range(0, len(vectors), 3):
                 triangle = Triangle3D(*vectors[index:index + 3])
-                triangles.append(triangle)
+                self.triangles.append(triangle)
 
             index = 0
             for mesh in scene.mesh_list:
                 face = Face3D()
                 for _ in mesh.faces:
-                    triangle = triangles[index]
+                    triangle = self.triangles[index]
                     index += 1
                     face.add(triangle)
                 self.objects.append(face)
