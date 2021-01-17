@@ -8,6 +8,7 @@ import math
 import random
 from matplotlib import pyplot
 from matplotlib.patches import Polygon
+from util import quick_sort
 
 
 class Frustum:
@@ -104,6 +105,40 @@ class Frustum:
         tp3 = Vector3D(xp3, yp3, zp3)
         return Triangle3D(tp1, tp2, tp3)
 
+    def project_triangle(self, triangle):
+        dir1 = self.dir1
+        dir2 = self.dir2
+        dir3 = self.dir3
+
+        p1 = triangle.p1
+        p2 = triangle.p2
+        p3 = triangle.p3
+
+        # calculate light for the projected triangle
+        triangle_norm = triangle.normal.norm()
+        transformed_light = self.light.rotate(dir1, dir2, dir3)
+        light_norm = transformed_light.norm()
+        shadow = triangle_norm.dot_prod(light_norm)
+        color = (0, 0, max(shadow, 0))
+
+        vc_distance = 10.0
+        vanishing_point = self.front + vc_distance
+
+        # project the new triangle onto the front plane of the frustum
+        vp1_dist = abs(vanishing_point - p1.z())
+        xp1 = p1.x() * vc_distance / vp1_dist
+        yp1 = p1.y() * vc_distance / vp1_dist
+
+        vp2_dist = abs(vanishing_point - p2.z())
+        xp2 = p2.x() * vc_distance / vp2_dist
+        yp2 = p2.y() * vc_distance / vp2_dist
+
+        vp3_dist = abs(vanishing_point - p3.z())
+        xp3 = p3.x() * vc_distance / vp3_dist
+        yp3 = p3.y() * vc_distance / vp3_dist
+
+        self.plt.fill([xp1, xp2, xp3], [yp1, yp2, yp3], color=color)
+
     def project(self, triangle, x, y):
         # calculate light for the projected triangle
         triangle_norm = triangle.normal.norm()
@@ -140,16 +175,6 @@ def rotation_matrix_axis_z(angle=0.0):
     return Matrix3x3(math.cos(angle), -math.sin(angle), 0,
                      math.sin(angle), math.cos(angle), 0,
                      0, 0, 1)
-
-
-class Function3D:
-    def __init__(self, points):
-        self.points = points.copy()
-
-    def draw(self, ax, color='b'):
-        x, y, z = zip(*self.points)
-        ax.plot(x, y, z, color=color)
-
 
 class Vector3D:
     def __init__(self, x, y, z, n_x=None, n_y=None, n_z=None):
@@ -221,53 +246,6 @@ class Vector3D:
         x, y, z = self.xyz
         return f'({x}, {y}, {z})'
 
-
-class Segment3D:
-    def __init__(self, p1, p2):
-        self.p1 = p1
-        self.p2 = p2
-
-    def draw(self, ax, color='b', flat=False, camera_az=0.0, camera_elev=0.0):
-
-        dir1 = Vector3D(math.cos(camera_az), math.sin(camera_az), 0)
-        dir2 = Vector3D(-math.sin(camera_az), math.cos(camera_az), 0)
-        dir3 = Vector3D(0, 0, 1)
-
-        xp1 = self.p1.dot_prod(dir1) / dir1.length()
-        yp1 = self.p1.dot_prod(dir2) / dir2.length()
-        if flat:
-            zp1 = 0
-        else:
-            zp1 = self.p1.dot_prod(dir3) / dir3.length()
-
-        xp2 = self.p2.dot_prod(dir1) / dir1.length()
-        yp2 = self.p2.dot_prod(dir2) / dir2.length()
-        if flat:
-            zp2 = 0
-        else:
-            zp2 = self.p2.dot_prod(dir3) / dir3.length()
-
-        ax.plot([xp1, xp2], [yp1, yp2], [zp1, zp2], color=color)
-
-    def project(self, plt, color='b', camera_az=0.0, camera_elev=0.0, camera_ang=0.0, camera_dist=1.0):
-        x_rotation_matrix = rotation_matrix_axis_x(elevation=camera_elev)
-        y_rotation_matrix = rotation_matrix_axis_y(azimuth=camera_az)
-        z_rotation_matrix = rotation_matrix_axis_z(angle=camera_ang)
-        dir1 = z_rotation_matrix.prod(y_rotation_matrix.prod(x_rotation_matrix.prod(Vector3D(1, 0, 0))))
-        dir2 = z_rotation_matrix.prod(y_rotation_matrix.prod(x_rotation_matrix.prod(Vector3D(0, 1, 0))))
-        dir3 = z_rotation_matrix.prod(y_rotation_matrix.prod(x_rotation_matrix.prod(Vector3D(0, 0, 1))))
-
-        dot_prod = dir3.dot_prod(Vector3D(*self.p1.normal))
-        if dot_prod <= 0:
-            return
-
-        xp1 = self.p1.dot_prod(dir1) / (dir1.length() * camera_dist)
-        yp1 = self.p1.dot_prod(dir2) / (dir2.length() * camera_dist)
-        xp2 = self.p2.dot_prod(dir1) / (dir1.length() * camera_dist)
-        yp2 = self.p2.dot_prod(dir2) / (dir2.length() * camera_dist)
-        plt.plot([xp1, xp2], [yp1, yp2], color=color)
-
-
 class Line3D:
     def __init__(self, p1, p2):
         self.p1 = p1
@@ -276,7 +254,6 @@ class Line3D:
 
     def get_coord_for_param(self, t):
         return self.direction.scalar_prod(t).add(self.p1)
-
 
 class Triangle3D:
     def __init__(self, p1, p2, p3):
@@ -380,9 +357,15 @@ class Triangle3D:
 
         plt.fill([xp1, xp2, xp3], [yp1, yp2, yp3], color=color)
 
+    def __le__(self, other):
+        # in * THIS PARTICULAR CASE * I define that a triangle is less or equal to other by comparing the Z orders
+        # of their points
+        max_z1 = max(max(self.p1.z(), self.p2.z()), self.p3.z())
+        max_z2 = max(max(other.p1.z(), other.p2.z()), other.p3.z())
+        return max_z1 <= max_z2
+
     def __repr__(self):
         return f'Triangle [ {self.p1}, {self.p2}, {self.p3} ] '
-
 
 class Face3D:
     def __init__(self, triangles=None):
@@ -404,7 +387,6 @@ class Face3D:
         for triangle in self.triangles:
             triangle.project(plt, frustum=frustum, light=light)
 
-
 class Scene3D:
     def __init__(self, file_name, plt, frustum, light):
         self.file_name = file_name
@@ -416,23 +398,30 @@ class Scene3D:
 
     def set_azimuth(self, azimuth):
         self.frustum.set_azimuth(azimuth)
-        self.project()
+        self.project_fast()
 
     def set_elevation(self, elevation):
         self.frustum.set_elevation(elevation)
-        self.project()
+        self.project_fast()
 
     def set_angle(self, angle):
         self.frustum.set_angle(angle)
-        self.project()
+        self.project_fast()
 
     def set_camera_distance(self, camera_distance):
         self.frustum.set_distance(camera_distance)
-        self.project()
+        self.project_fast()
 
     def project_fast(self):
+        transformed_triangles = []
         for triangle in self.triangles:
-            triangle.project(self.plt, self.frustum, self.light)
+            transformed_triangle = self.frustum.transform(triangle)
+            if transformed_triangle is None:
+                continue
+            transformed_triangles.append(transformed_triangle)
+        quick_sort(transformed_triangles)
+        for triangle in transformed_triangles:
+            self.frustum.project_triangle(triangle)
 
     def project(self):
         camera_distance = self.frustum.front
@@ -491,7 +480,6 @@ class Scene3D:
                     index += 1
                     face.add(triangle)
                 self.objects.append(face)
-
 
 if __name__ == '__main__':
     p1 = Vector3D(1, 1, 0)

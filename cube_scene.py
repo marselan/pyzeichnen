@@ -116,6 +116,6 @@ root.withdraw()
 
 plt2.plot([-box_size, box_size, box_size, -box_size, -box_size], [-box_size, -box_size, box_size, box_size, -box_size],
           color='w')
-scene.project()
+scene.project_fast()
 
 tki.mainloop()
