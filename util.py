@@ -1,5 +1,10 @@
+#
+# util.py
+#
+# Created by Mariano Arselan at 18-01-21
+#
+
 import random
-import sys
 
 def array_is_in_order(arr):
     for i in range(0, len(arr)-1):
