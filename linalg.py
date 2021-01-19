@@ -6,6 +6,9 @@
 
 import math
 import random
+import sys
+import getopt
+import numbers
 
 def rotation_matrix_axis_x(elevation=0.0):
     return Matrix3x3(1, 0, 0,
@@ -25,9 +28,14 @@ def rotation_matrix_axis_z(angle=0.0):
                      0, 0, 1)
 
 class Vector2D:
-    def __init__(self, x, y):
+    # by default, it initializes a row Vector
+    def __init__(self, x, y, row=True):
         self.x = x
         self.y = y
+        self.row_vector = row
+
+    def tr(self):
+        return Vector2D(*self.components(), row=not self.row_vector)
 
     def rotate(self, dir1, dir2):
         xp1 = self.dot_prod(dir1) / dir1.length()
@@ -37,36 +45,57 @@ class Vector2D:
     def components(self):
         return (self.x, self.y)
 
-    def x(self):
-        x, _= self.components()
-        return x
-
-    def y(self):
-        _, y= self.components()
-        return y
-
     def add(self, vector):
         x1, y1 = self.components()
         x2, y2 = vector.components()
         return Vector2D(x1 + x2, y1 + y2)
 
+    def __add__(self, other):
+        return self.add(other)
+
     def sub(self, vector):
-        x1, y1= self.components()
-        x2, y2= vector.components()
-        return Vector3D(x1 - x2, y1 - y2)
+        x1, y1 = self.components()
+        x2, y2 = vector.components()
+        return Vector2D(x1 - x2, y1 - y2)
+
+    def __sub__(self, other):
+        return self.sub(other)
 
     def length(self):
         x, y= self.components()
         return math.sqrt(x ** 2 + y ** 2)
 
     def scalar_prod(self, scalar):
-        x, y= self.components()
-        return Vector3D(x * scalar, y * scalar,)
+        x, y = self.components()
+        return Vector2D(x * scalar, y * scalar)
 
+    # multiply this vector (assuming this is a row vector) with other vector (assuming as column vector)
+    # the result is a scalar
+    def prod_row_by_col(self, vector):
+        return self.dot_prod(vector)
+
+    # multiply this vector (assuming this is a column vector) with other vector (assuming as row vector)
+    # the result is a 2x2 Matrix
+    def prod_col_by_row(self, other):
+        v1, v2 = self.components()
+        w1, w2 = other.components()
+        return Matrix2x2(v1 * w1, v1 * w2, v2 * w1, v2 * w2)
+
+    # dot product. No matter if the operands are row or column vectors
     def dot_prod(self, vector):
         x1, y1= self.components()
         x2, y2= vector.components()
         return x1 * x2 + y1 * y2
+
+    def __mul__(self, other):
+        if not self.row_vector and other.row_vector:
+            return self.prod_col_by_row(other)
+        elif self.row_vector and not other.row_vector:
+            return self.prod_row_by_col(other)
+        elif other is not Vector2D:
+            return self.scalar_prod(other)
+        else:
+            return self.dot_prod(other)
 
     def norm(self):
         x, y= self.components()
@@ -74,10 +103,25 @@ class Vector2D:
         return Vector2D(x / length, y / length)
 
     @classmethod
-    def sample(cls, from_, to_, count):
-        arr_x = random.sample(range(from_, to_), count)
-        arr_y = random.sample(range(from_, to_), count)
+    def sample(cls, from_x, to_x, from_y, to_y, count):
+        arr_x = random.sample(range(from_x, to_x), count)
+        arr_y = random.sample(range(from_y, to_y), count)
         return [Vector2D(x, y) for (x, y) in zip(arr_x, arr_y)]
+
+    @classmethod
+    def mean(cls, vectors):
+        v = Vector2D(0, 0)
+        for vector in vectors:
+            v = v.add(vector)
+        return v.scalar_prod(1/len(vectors))
+
+    @classmethod
+    def covariance_matrix(cls, vectors):
+        cm = Matrix2x2(0, 0, 0, 0)
+        m = Vector2D.mean(vectors)
+        for vector in vectors:
+            cm = cm + ( (vector - m).tr() * (vector - m) )
+        return cm * (1 / len(vectors))
 
     def __eq__(self, other):
         return self.x == other.x and self.y == other.y
@@ -280,11 +324,37 @@ class Triangle3D:
 
 class Matrix2x2:
     def __init__(self, c00, c01, c10, c11):
-        self.v0 = Vector2D(c00, c01)
-        self.v1 = Vector2D(c10, c11)
+        # as a stack of rows
+        self.r0 = Vector2D(c00, c01)
+        self.r1 = Vector2D(c10, c11)
+        # as a sequence of columns
+        self.c0 = Vector2D(c00, c10)
+        self.c1 = Vector2D(c01, c11)
 
-    def prod(self, vector):
-        return Vector2D(self.v0.dot_prod(vector), self.v1.dot_prod(vector))
+    def add(self, other):
+        return Matrix2x2(*self.r0.add(other.r0).components(), *self.r1.add(other.r1).components())
+
+    def __add__(self, other):
+        return self.add(other)
+
+    def prod_with_scalar(self, scalar):
+        return Matrix2x2(*self.r0.scalar_prod(scalar).components(), *self.r1.scalar_prod(scalar).components())
+
+    def prod_with_vector(self, vector):
+        return Vector2D(self.r0.dot_prod(vector), self.r1.dot_prod(vector))
+
+    def prod_with_matrix(self, other):
+        return Matrix2x2(self.r0.prod(other.c0), self.r0.prod(other.c1), self.r1.prod(other.c0, self.r1.prod(other.c1)))
+
+    def __mul__(self, other):
+        if type(other) == Vector2D:
+            return self.prod_with_vector(other)
+        elif type(other) == Matrix2x2:
+            return self.prod_with_matrix(other)
+        elif isinstance(other, numbers.Number):
+            return self.prod_with_scalar(other)
+        else:
+            raise TypeError
 
 class Matrix3x3:
     def __init__(self, c00, c01, c02, c10, c11, c12, c20, c21, c22):
@@ -294,3 +364,39 @@ class Matrix3x3:
 
     def prod(self, vector):
         return Vector3D(self.v0.dot_prod(vector), self.v1.dot_prod(vector), self.v2.dot_prod(vector))
+
+def render_2d_vector_sample():
+    from matplotlib import pyplot as plt
+    sample = Vector2D.sample(0, 1000, -1000, 0, 100)
+    mean = Vector2D.mean(sample)
+    cov_mat = Vector2D.covariance_matrix(sample)
+
+    plt.scatter(mean.x, mean.y)
+    plt.scatter([v.x for v in sample], [v.y for v in sample])
+    plt.show()
+
+
+def main(argv):
+    use_case = ""
+    try:
+        opts, args = getopt.getopt(argv, "hu:", ["help=", "use-case="])
+    except getopt.GetoptError:
+        print('linalg -h or lingalg --help for list of options')
+        sys.exit(2)
+    for opt, arg in opts:
+        if opt in ("-h", "--help"):
+            print("-u, --use-case:")
+            print("linalg -u [use case name]")
+            print("List of use case names:")
+            print(" * render-2d-vector-sample")
+            print(" * render-2d-vector-sample-best-fit")
+        elif opt in ("-u", "--use-case"):
+            use_case = arg
+
+    if use_case == 'render-2d-vector-sample':
+        render_2d_vector_sample()
+
+
+
+if __name__ == '__main__':
+    main(sys.argv[1:])
