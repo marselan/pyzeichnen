@@ -10,6 +10,7 @@ import sys
 import getopt
 import numbers
 
+
 def rotation_matrix_axis_x(elevation=0.0):
     return Matrix3x3(1, 0, 0,
                      0, math.cos(elevation), -math.sin(elevation),
@@ -26,6 +27,7 @@ def rotation_matrix_axis_z(angle=0.0):
     return Matrix3x3(math.cos(angle), -math.sin(angle), 0,
                      math.sin(angle), math.cos(angle), 0,
                      0, 0, 1)
+
 
 class Vector2D:
     # by default, it initializes a row Vector
@@ -62,7 +64,7 @@ class Vector2D:
         return self.sub(other)
 
     def length(self):
-        x, y= self.components()
+        x, y = self.components()
         return math.sqrt(x ** 2 + y ** 2)
 
     def scalar_prod(self, scalar):
@@ -83,8 +85,8 @@ class Vector2D:
 
     # dot product. No matter if the operands are row or column vectors
     def dot_prod(self, vector):
-        x1, y1= self.components()
-        x2, y2= vector.components()
+        x1, y1 = self.components()
+        x2, y2 = vector.components()
         return x1 * x2 + y1 * y2
 
     def __mul__(self, other):
@@ -98,7 +100,7 @@ class Vector2D:
             return self.dot_prod(other)
 
     def norm(self):
-        x, y= self.components()
+        x, y = self.components()
         length = self.length()
         return Vector2D(x / length, y / length)
 
@@ -113,22 +115,23 @@ class Vector2D:
         v = Vector2D(0, 0)
         for vector in vectors:
             v = v.add(vector)
-        return v.scalar_prod(1/len(vectors))
+        return v.scalar_prod(1 / len(vectors))
 
     @classmethod
     def covariance_matrix(cls, vectors):
         cm = Matrix2x2(0, 0, 0, 0)
         m = Vector2D.mean(vectors)
         for vector in vectors:
-            cm = cm + ( (vector - m).tr() * (vector - m) )
+            cm = cm + ((vector - m).tr() * (vector - m))
         return cm * (1 / len(vectors))
 
     def __eq__(self, other):
         return self.x == other.x and self.y == other.y
 
     def __repr__(self):
-        x, y= self.components()
+        x, y = self.components()
         return f'({x}, {y})'
+
 
 class Vector3D:
     def __init__(self, x, y, z, n_x=None, n_y=None, n_z=None):
@@ -200,6 +203,7 @@ class Vector3D:
         x, y, z = self.xyz
         return f'({x}, {y}, {z})'
 
+
 class Line3D:
     def __init__(self, p1, p2):
         self.p1 = p1
@@ -208,6 +212,7 @@ class Line3D:
 
     def get_coord_for_param(self, t):
         return self.direction.scalar_prod(t).add(self.p1)
+
 
 class Triangle3D:
     def __init__(self, p1, p2, p3):
@@ -344,7 +349,7 @@ class Matrix2x2:
         return Vector2D(self.r0.dot_prod(vector), self.r1.dot_prod(vector))
 
     def prod_with_matrix(self, other):
-        return Matrix2x2(self.r0.prod(other.c0), self.r0.prod(other.c1), self.r1.prod(other.c0, self.r1.prod(other.c1)))
+        return Matrix2x2(self.r0.dot_prod(other.c0), self.r0.dot_prod(other.c1), self.r1.dot_prod(other.c0, self.r1.dot_prod(other.c1)))
 
     def __mul__(self, other):
         if type(other) == Vector2D:
@@ -356,6 +361,27 @@ class Matrix2x2:
         else:
             raise TypeError
 
+    def eigenvalues(self):
+        c00, c01 = self.r0.components()
+        c10, c11 = self.r1.components()
+        b = c00 + c11
+        c = c00 * c11 - c10 * c01
+        square_root = math.sqrt( b * b - 4 * c )
+        lambda_1 = (-b + square_root) / 2
+        lambda_2 = (-b - square_root) / 2
+        return (lambda_1, lambda_2)
+
+    def eigenvectors(self):
+        c00, c01 = self.r0.components()
+        c10, c11 = self.r1.components()
+        ev1, ev2 = self.eigenvalues()
+        v1 = Vector2D((ev1 - c11 - c01) / (c00 - ev1 + c10), 1.0)
+        v2 = Vector2D((ev2 - c11 - c01) / (c00 - ev2 + c10), 1.0)
+        return (v1, v2)
+
+    def __repr__(self):
+        return f"|{self.r0.x} {self.r0.y}|\n|{self.r1.x} {self.r1.y}|"
+
 class Matrix3x3:
     def __init__(self, c00, c01, c02, c10, c11, c12, c20, c21, c22):
         self.v0 = Vector3D(c00, c01, c02)
@@ -365,14 +391,17 @@ class Matrix3x3:
     def prod(self, vector):
         return Vector3D(self.v0.dot_prod(vector), self.v1.dot_prod(vector), self.v2.dot_prod(vector))
 
+
 def render_2d_vector_sample():
     from matplotlib import pyplot as plt
     sample = Vector2D.sample(0, 1000, -1000, 0, 100)
     mean = Vector2D.mean(sample)
     cov_mat = Vector2D.covariance_matrix(sample)
-
-    plt.scatter(mean.x, mean.y)
+    print(cov_mat)
+    print(cov_mat.eigenvalues())
+    print(cov_mat.eigenvectors())
     plt.scatter([v.x for v in sample], [v.y for v in sample])
+    plt.scatter(mean.x, mean.y)
     plt.show()
 
 
@@ -395,7 +424,6 @@ def main(argv):
 
     if use_case == 'render-2d-vector-sample':
         render_2d_vector_sample()
-
 
 
 if __name__ == '__main__':
