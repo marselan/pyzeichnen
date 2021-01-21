@@ -28,6 +28,16 @@ def rotation_matrix_axis_z(angle=0.0):
                      math.sin(angle), math.cos(angle), 0,
                      0, 0, 1)
 
+class Line2D:
+    def __init__(self, point, direction):
+        self.point = point
+        self.direction = direction
+
+    def plot(self, plt, t0, t1, color='b', linewidth=1):
+        v0 = self.point + (self.direction & t0)
+        v1 = self.point + (self.direction & t1)
+        plt.plot([v0.x, v1.x], [v0.y, v1.y], color=color, linewidth=linewidth)
+
 
 class Vector2D:
     def __init__(self, x, y):
@@ -87,6 +97,9 @@ class Vector2D:
         length = self.length()
         return Vector2D(x / length, y / length)
 
+    def plot(self, plt, color='b', linewidth=1):
+        plt.plot([0, self.x], [0, self.y], color=color, linewidth=linewidth)
+
     @classmethod
     def sample(cls, from_x, to_x, from_y, to_y, count):
         arr_x = random.sample(range(from_x, to_x), count)
@@ -107,6 +120,21 @@ class Vector2D:
         for vector in vectors:
             cm = cm + ((vector - m) ** (vector - m))
         return cm & (1 / len(vectors))
+
+    @classmethod
+    def get_box_from_eigenvectors(cls, eigenvector0, eigenvector1, sample):
+        l = [math.inf, -math.inf, math.inf, -math.inf]
+        for vector in sample:
+            dot_prod_0 = eigenvector0 * vector
+            dot_prod_1 = eigenvector1 * vector
+            l[0] = min(l[0], dot_prod_0)
+            l[1] = max(l[1], dot_prod_0)
+            l[2] = min(l[2], dot_prod_1)
+            l[3] = max(l[3], dot_prod_1)
+            a = (l[0] + l[1]) / 2
+            b = (l[2] + l[3]) / 2
+            q = (eigenvector0 & a) + (eigenvector1 & b)
+        return eigenvector0 & l[0], eigenvector0 & l[1], eigenvector1 & l[2], eigenvector1 & l[3], q
 
     def __eq__(self, other):
         return self.x == other.x and self.y == other.y
@@ -321,7 +349,7 @@ class Matrix2x2:
     def __and__(self, scalar):
         return Matrix2x2(*(self.r0 & scalar).components(), *(self.r1 & scalar).components())
 
-    def __prod__(self, vector):
+    def __mul__(self, vector):
         return Vector2D(self.r0 * vector, self.r1 * vector)
 
     def __pow__(self, other):
@@ -341,11 +369,13 @@ class Matrix2x2:
         return (lambda_1, lambda_2)
 
     def eigenvectors(self):
-        c00, c01 = self.r0.components()
-        ev1, ev2 = self.eigenvalues()
-        v1 = Vector2D(c01, ev1 - c00)
-        v2 = Vector2D(c01, ev2 - c00)
-        return (v1, v2)
+        import numpy as np
+        from numpy import linalg
+        np_mat = np.array([[*self.r0.components()], [*self.r1.components()]])
+        w, v = linalg.eig(np_mat)
+        ev0 = Vector2D(*v[0])
+        ev1 = Vector2D(*v[1])
+        return (w[0], w[1]), ev0, ev1
 
     def __repr__(self):
         return f"|{self.r0.x} {self.r0.y}|\n|{self.r1.x} {self.r1.y}|"
@@ -365,33 +395,40 @@ class Matrix3x3:
 
 def render_2d_vector_sample():
     from matplotlib import pyplot as plt
-    import numpy as np
-    from numpy import linalg as LA
+    plt.axes().set_aspect('equal')
     sample = Vector2D.sample(0, 1000, -1000, 0, 100)
     mean = Vector2D.mean(sample)
     cov_mat = Vector2D.covariance_matrix(sample)
-    print(cov_mat)
-    eigenvalue1, eigenvalue2 = cov_mat.eigenvalues()
-    eigenvector1, eigenvector2 = cov_mat.eigenvectors()
-    print("EVALUES")
-    print(eigenvalue1)
-    print(eigenvalue2)
-    print("EVECTORS")
 
-    print(eigenvector1)
-    print(eigenvector2)
-    w, v = LA.eig(np.array([[cov_mat.r0.x, cov_mat.r0.y], [cov_mat.r1.x, cov_mat.r1.y]]))
-    print("======")
-    print(w)
-    print(v)
-    # print(cov_mat * eigenvector1)
-    #ev1_ = eigenvector1.scalar_prod(eigenvalue1)
+    eigenvalues, eigenvector0, eigenvector1 = cov_mat.eigenvectors()
+
+    ev0, ev1, ev2, ev3, q = Vector2D.get_box_from_eigenvectors(eigenvector0, eigenvector1, sample)
+    #ev0.plot(plt, color='r', linewidth=2)
+    #ev1.plot(plt, color='g')
+    #ev2.plot(plt, color='b', linewidth=2)
+    #ev3.plot(plt, color='k')
+
     plt.scatter([v.x for v in sample], [v.y for v in sample])
     plt.scatter(mean.x, mean.y)
-    plt.plot([0, w[0] * v[0, 0]], [0, w[0] * v[0, 1]], color='r')
+    plt.scatter(q.x, q.y, color='r')
 
-    #draw_vector_2d(ev1_, plt, color="r")
-    #draw_vector_2d(eigenvector2, plt, color="g")
+    l0 = Line2D(q, ev0)
+    l1 = Line2D(q, ev2)
+    l0.plot(plt, -1, 1, color='gray')
+    l1.plot(plt, -1, 1, color='gray')
+
+    rf = Line2D(ev1, ev3)
+    rf.plot(plt, -1, 1, color='orange')
+
+    lf = Line2D(ev0, ev3)
+    lf.plot(plt, -1, 1, color='orange')
+
+    tf = Line2D(ev2, ev0)
+    tf.plot(plt, 0, 1, color='orange')
+
+    bf = Line2D(ev3, ev0)
+    bf.plot(plt, 0, 10, color='orange')
+
     plt.show()
 
 
