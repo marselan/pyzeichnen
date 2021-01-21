@@ -30,14 +30,9 @@ def rotation_matrix_axis_z(angle=0.0):
 
 
 class Vector2D:
-    # by default, it initializes a row Vector
-    def __init__(self, x, y, row=True):
+    def __init__(self, x, y):
         self.x = x
         self.y = y
-        self.row_vector = row
-
-    def tr(self):
-        return Vector2D(*self.components(), row=not self.row_vector)
 
     def rotate(self, dir1, dir2):
         xp1 = self.dot_prod(dir1) / dir1.length()
@@ -47,38 +42,31 @@ class Vector2D:
     def components(self):
         return (self.x, self.y)
 
-    def add(self, vector):
+    def __add__(self, vector):
         x1, y1 = self.components()
         x2, y2 = vector.components()
         return Vector2D(x1 + x2, y1 + y2)
 
-    def __add__(self, other):
-        return self.add(other)
-
-    def sub(self, vector):
+    def __sub__(self, vector):
         x1, y1 = self.components()
         x2, y2 = vector.components()
         return Vector2D(x1 - x2, y1 - y2)
 
-    def __sub__(self, other):
-        return self.sub(other)
+    def __neg__(self):
+        x1, y1 = self.components()
+        return Vector2D(-x1, -y1)
 
     def length(self):
         x, y = self.components()
         return math.sqrt(x ** 2 + y ** 2)
 
-    def scalar_prod(self, scalar):
+    def __and__(self, scalar):
         x, y = self.components()
         return Vector2D(x * scalar, y * scalar)
 
-    # multiply this vector (assuming this is a row vector) with other vector (assuming as column vector)
-    # the result is a scalar
-    def prod_row_by_col(self, vector):
-        return self.dot_prod(vector)
-
     # multiply this vector (assuming this is a column vector) with other vector (assuming as row vector)
     # the result is a 2x2 Matrix
-    def prod_col_by_row(self, other):
+    def __pow__(self, other):
         v1, v2 = self.components()
         w1, w2 = other.components()
         return Matrix2x2(v1 * w1, v1 * w2, v2 * w1, v2 * w2)
@@ -89,15 +77,10 @@ class Vector2D:
         x2, y2 = vector.components()
         return x1 * x2 + y1 * y2
 
+    # row vector multiplied by a column vector.
+    # the result is a scalar
     def __mul__(self, other):
-        if not self.row_vector and other.row_vector:
-            return self.prod_col_by_row(other)
-        elif self.row_vector and not other.row_vector:
-            return self.prod_row_by_col(other)
-        elif other is not Vector2D:
-            return self.scalar_prod(other)
-        else:
-            return self.dot_prod(other)
+        return self.dot_prod(other)
 
     def norm(self):
         x, y = self.components()
@@ -114,16 +97,16 @@ class Vector2D:
     def mean(cls, vectors):
         v = Vector2D(0, 0)
         for vector in vectors:
-            v = v.add(vector)
-        return v.scalar_prod(1 / len(vectors))
+            v = v + vector
+        return v & (1 / len(vectors))
 
     @classmethod
     def covariance_matrix(cls, vectors):
         cm = Matrix2x2(0, 0, 0, 0)
         m = Vector2D.mean(vectors)
         for vector in vectors:
-            cm = cm + ((vector - m).tr() * (vector - m))
-        return cm * (1 / len(vectors))
+            cm = cm + ((vector - m) ** (vector - m))
+        return cm & (1 / len(vectors))
 
     def __eq__(self, other):
         return self.x == other.x and self.y == other.y
@@ -329,37 +312,23 @@ class Triangle3D:
 
 class Matrix2x2:
     def __init__(self, c00, c01, c10, c11):
-        # as a stack of rows
         self.r0 = Vector2D(c00, c01)
         self.r1 = Vector2D(c10, c11)
-        # as a sequence of columns
-        self.c0 = Vector2D(c00, c10)
-        self.c1 = Vector2D(c01, c11)
-
-    def add(self, other):
-        return Matrix2x2(*self.r0.add(other.r0).components(), *self.r1.add(other.r1).components())
 
     def __add__(self, other):
-        return self.add(other)
+        return Matrix2x2(*(self.r0 + other.r0).components(), *(self.r1 + other.r1).components())
 
-    def prod_with_scalar(self, scalar):
-        return Matrix2x2(*self.r0.scalar_prod(scalar).components(), *self.r1.scalar_prod(scalar).components())
+    def __and__(self, scalar):
+        return Matrix2x2(*(self.r0 & scalar).components(), *(self.r1 & scalar).components())
 
-    def prod_with_vector(self, vector):
-        return Vector2D(self.r0.dot_prod(vector), self.r1.dot_prod(vector))
+    def __prod__(self, vector):
+        return Vector2D(self.r0 * vector, self.r1 * vector)
 
-    def prod_with_matrix(self, other):
-        return Matrix2x2(self.r0.dot_prod(other.c0), self.r0.dot_prod(other.c1), self.r1.dot_prod(other.c0, self.r1.dot_prod(other.c1)))
+    def __pow__(self, other):
+        return Matrix2x2(self.r0 * other.c0, self.r0 * other.c1, self.r1 * other.c0, self.r1 * other.c1)
 
-    def __mul__(self, other):
-        if type(other) == Vector2D:
-            return self.prod_with_vector(other)
-        elif type(other) == Matrix2x2:
-            return self.prod_with_matrix(other)
-        elif isinstance(other, numbers.Number):
-            return self.prod_with_scalar(other)
-        else:
-            raise TypeError
+    def __eq__(self, other):
+        return self.r0 == other.r0 and self.r1 == other.r1
 
     def eigenvalues(self):
         c00, c01 = self.r0.components()
@@ -373,14 +342,16 @@ class Matrix2x2:
 
     def eigenvectors(self):
         c00, c01 = self.r0.components()
-        c10, c11 = self.r1.components()
         ev1, ev2 = self.eigenvalues()
-        v1 = Vector2D((ev1 - c11 - c01) / (c00 - ev1 + c10), 1.0)
-        v2 = Vector2D((ev2 - c11 - c01) / (c00 - ev2 + c10), 1.0)
+        v1 = Vector2D(c01, ev1 - c00)
+        v2 = Vector2D(c01, ev2 - c00)
         return (v1, v2)
 
     def __repr__(self):
         return f"|{self.r0.x} {self.r0.y}|\n|{self.r1.x} {self.r1.y}|"
+
+def draw_vector_2d(vector, plt, color):
+    plt.plot([0, vector.x], [0, vector.y], color=color)
 
 class Matrix3x3:
     def __init__(self, c00, c01, c02, c10, c11, c12, c20, c21, c22):
@@ -394,14 +365,33 @@ class Matrix3x3:
 
 def render_2d_vector_sample():
     from matplotlib import pyplot as plt
+    import numpy as np
+    from numpy import linalg as LA
     sample = Vector2D.sample(0, 1000, -1000, 0, 100)
     mean = Vector2D.mean(sample)
     cov_mat = Vector2D.covariance_matrix(sample)
     print(cov_mat)
-    print(cov_mat.eigenvalues())
-    print(cov_mat.eigenvectors())
+    eigenvalue1, eigenvalue2 = cov_mat.eigenvalues()
+    eigenvector1, eigenvector2 = cov_mat.eigenvectors()
+    print("EVALUES")
+    print(eigenvalue1)
+    print(eigenvalue2)
+    print("EVECTORS")
+
+    print(eigenvector1)
+    print(eigenvector2)
+    w, v = LA.eig(np.array([[cov_mat.r0.x, cov_mat.r0.y], [cov_mat.r1.x, cov_mat.r1.y]]))
+    print("======")
+    print(w)
+    print(v)
+    # print(cov_mat * eigenvector1)
+    #ev1_ = eigenvector1.scalar_prod(eigenvalue1)
     plt.scatter([v.x for v in sample], [v.y for v in sample])
     plt.scatter(mean.x, mean.y)
+    plt.plot([0, w[0] * v[0, 0]], [0, w[0] * v[0, 1]], color='r')
+
+    #draw_vector_2d(ev1_, plt, color="r")
+    #draw_vector_2d(eigenvector2, plt, color="g")
     plt.show()
 
 
