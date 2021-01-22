@@ -141,7 +141,9 @@ class Vector2D:
         return cm & (1 / len(vectors))
 
     @classmethod
-    def fit_box(cls, eigenvector0, eigenvector1, sample, plt):
+    def fit_box(cls, sample):
+        cov_mat = Vector2D.covariance_matrix(sample)
+        _, eigenvector0, eigenvector1 = cov_mat.eigenvectors()
         l = [math.inf, -math.inf, math.inf, -math.inf]
         for vector in sample:
             dot_prod_0 = eigenvector0 * vector
@@ -429,13 +431,10 @@ class Matrix3x3:
 def render_2d_vector_sample():
     from matplotlib import pyplot as plt
     plt.axes().set_aspect('equal')
-    sample = Vector2D.sample(0, 1000, -1000, 0, 100)
+    sample = Vector2D.sample(-1000, 1000, -1000, 1000, 100)
     mean = Vector2D.mean(sample)
-    cov_mat = Vector2D.covariance_matrix(sample)
 
-    eigenvalues, eigenvector0, eigenvector1 = cov_mat.eigenvectors()
-
-    ip0, ip1, ip2, ip3, center = Vector2D.fit_box(eigenvector0, eigenvector1, sample, plt)
+    ip0, ip1, ip2, ip3, center = Vector2D.fit_box(sample)
 
     s0 = Segment2D(ip0, ip1)
     s1 = Segment2D(ip1, ip2)
