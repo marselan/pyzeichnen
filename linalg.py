@@ -120,6 +120,11 @@ class Vector2D:
         plt.scatter([self.x], [self.y], color=color)
 
     @classmethod
+    def scatter(cls, sample, plt, color='b'):
+        for v in sample:
+            v.plot_as_point(plt, color)
+
+    @classmethod
     def sample(cls, from_x, to_x, from_y, to_y, count):
         arr_x = random.sample(range(from_x, to_x), count)
         arr_y = random.sample(range(from_y, to_y), count)
@@ -441,8 +446,9 @@ def render_2d_vector_sample():
     s2 = Segment2D(ip2, ip3)
     s3 = Segment2D(ip3, ip0)
 
-    plt.scatter([v.x for v in sample], [v.y for v in sample])
-    plt.scatter(mean.x, mean.y)
+    Vector2D.scatter(sample, plt, color="royalblue")
+    mean.plot_as_point(plt, color='r')
+
     s0.plot(plt, 'orange')
     s1.plot(plt, 'orange')
     s2.plot(plt, 'orange')
