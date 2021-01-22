@@ -33,11 +33,27 @@ class Line2D:
         self.point = point
         self.direction = direction
 
-    def plot(self, plt, t0, t1, color='b', linewidth=1):
+    def intersection_point(self, other_line):
+        d1, d2 = self.direction.x, self.direction.y
+        p1, p2 = self.point.x, self.point.y
+        e1, e2 = other_line.direction.x, other_line.direction.y
+        q1, q2 = other_line.point.x, other_line.point.y
+
+        t = (d1 * (q2 - p2) + d2 * (p1 - q1)) / (d2 * e1 - d1 * e2)
+        return other_line.point + (other_line.direction & t)
+
+    def plot(self, plt, t0, t1, color='b', line_width=1):
         v0 = self.point + (self.direction & t0)
         v1 = self.point + (self.direction & t1)
-        plt.plot([v0.x, v1.x], [v0.y, v1.y], color=color, linewidth=linewidth)
+        plt.plot([v0.x, v1.x], [v0.y, v1.y], color=color, linewidth=line_width)
 
+class Segment2D:
+    def __init__(self, p0, p1):
+        self.p0 = p0
+        self.p1 = p1
+
+    def plot(self, plt, color='b', line_width=1):
+        plt.plot([self.p0.x, self.p1.x], [self.p0.y, self.p1.y], color=color, linewidth=line_width)
 
 class Vector2D:
     def __init__(self, x, y):
@@ -97,8 +113,11 @@ class Vector2D:
         length = self.length()
         return Vector2D(x / length, y / length)
 
-    def plot(self, plt, color='b', linewidth=1):
-        plt.plot([0, self.x], [0, self.y], color=color, linewidth=linewidth)
+    def plot(self, plt, color='b', line_width=1):
+        plt.plot([0, self.x], [0, self.y], color=color, linewidth=line_width)
+
+    def plot_as_point(self, plt, color='b'):
+        plt.scatter([self.x], [self.y], color=color)
 
     @classmethod
     def sample(cls, from_x, to_x, from_y, to_y, count):
@@ -122,7 +141,7 @@ class Vector2D:
         return cm & (1 / len(vectors))
 
     @classmethod
-    def get_box_from_eigenvectors(cls, eigenvector0, eigenvector1, sample):
+    def fit_box(cls, eigenvector0, eigenvector1, sample, plt):
         l = [math.inf, -math.inf, math.inf, -math.inf]
         for vector in sample:
             dot_prod_0 = eigenvector0 * vector
@@ -131,10 +150,24 @@ class Vector2D:
             l[1] = max(l[1], dot_prod_0)
             l[2] = min(l[2], dot_prod_1)
             l[3] = max(l[3], dot_prod_1)
-            a = (l[0] + l[1]) / 2
-            b = (l[2] + l[3]) / 2
-            q = (eigenvector0 & a) + (eigenvector1 & b)
-        return eigenvector0 & l[0], eigenvector0 & l[1], eigenvector1 & l[2], eigenvector1 & l[3], q
+
+        a = (l[0] + l[1]) / 2
+        b = (l[2] + l[3]) / 2
+
+        ev0, ev1, ev2, ev3 = eigenvector0 & l[0], eigenvector0 & l[1], eigenvector1 & l[2], eigenvector1 & l[3]
+        right_line = Line2D(ev1, ev3)
+        left_line = Line2D(ev0, ev2)
+        top_line = Line2D(ev2, ev0)
+        bottom_line = Line2D(ev3, ev1)
+        box_center = (eigenvector0 & a) + (eigenvector1 & b)
+
+        ip0 = top_line.intersection_point(left_line)
+        ip1 = top_line.intersection_point(right_line)
+        ip2 = bottom_line.intersection_point(right_line)
+        ip3 = bottom_line.intersection_point(left_line)
+
+        return ip0, ip1, ip2, ip3, box_center
+
 
     def __eq__(self, other):
         return self.x == other.x and self.y == other.y
@@ -402,32 +435,19 @@ def render_2d_vector_sample():
 
     eigenvalues, eigenvector0, eigenvector1 = cov_mat.eigenvectors()
 
-    ev0, ev1, ev2, ev3, q = Vector2D.get_box_from_eigenvectors(eigenvector0, eigenvector1, sample)
-    #ev0.plot(plt, color='r', linewidth=2)
-    #ev1.plot(plt, color='g')
-    #ev2.plot(plt, color='b', linewidth=2)
-    #ev3.plot(plt, color='k')
+    ip0, ip1, ip2, ip3, center = Vector2D.fit_box(eigenvector0, eigenvector1, sample, plt)
+
+    s0 = Segment2D(ip0, ip1)
+    s1 = Segment2D(ip1, ip2)
+    s2 = Segment2D(ip2, ip3)
+    s3 = Segment2D(ip3, ip0)
 
     plt.scatter([v.x for v in sample], [v.y for v in sample])
     plt.scatter(mean.x, mean.y)
-    plt.scatter(q.x, q.y, color='r')
-
-    l0 = Line2D(q, ev0)
-    l1 = Line2D(q, ev2)
-    l0.plot(plt, -1, 1, color='gray')
-    l1.plot(plt, -1, 1, color='gray')
-
-    rf = Line2D(ev1, ev3)
-    rf.plot(plt, -1, 1, color='orange')
-
-    lf = Line2D(ev0, ev3)
-    lf.plot(plt, -1, 1, color='orange')
-
-    tf = Line2D(ev2, ev0)
-    tf.plot(plt, 0, 1, color='orange')
-
-    bf = Line2D(ev3, ev0)
-    bf.plot(plt, 0, 10, color='orange')
+    s0.plot(plt, 'orange')
+    s1.plot(plt, 'orange')
+    s2.plot(plt, 'orange')
+    s3.plot(plt, 'orange')
 
     plt.show()
 
