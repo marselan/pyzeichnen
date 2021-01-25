@@ -48,9 +48,9 @@ class Frustum:
         x_rotation_matrix = rotation_matrix_axis_x(elevation=self.elevation)
         y_rotation_matrix = rotation_matrix_axis_y(azimuth=self.azimuth)
         z_rotation_matrix = rotation_matrix_axis_z(angle=self.angle)
-        self.dir1 = z_rotation_matrix.prod(y_rotation_matrix.prod(x_rotation_matrix.prod(Vector3D(1, 0, 0))))
-        self.dir2 = z_rotation_matrix.prod(y_rotation_matrix.prod(x_rotation_matrix.prod(Vector3D(0, 1, 0))))
-        self.dir3 = z_rotation_matrix.prod(y_rotation_matrix.prod(x_rotation_matrix.prod(Vector3D(0, 0, 1))))
+        self.dir1 = z_rotation_matrix * (y_rotation_matrix * (x_rotation_matrix * Vector3D(1, 0, 0)))
+        self.dir2 = z_rotation_matrix * (y_rotation_matrix * (x_rotation_matrix * Vector3D(0, 1, 0)))
+        self.dir3 = z_rotation_matrix * (y_rotation_matrix * (x_rotation_matrix * Vector3D(0, 0, 1)))
 
     def set_azimuth(self, azimuth):
         self.azimuth = azimuth
@@ -129,17 +129,17 @@ class Frustum:
         vanishing_point = self.front + vc_distance
 
         # project the new triangle onto the front plane of the frustum
-        vp1_dist = abs(vanishing_point - p1.z())
-        xp1 = p1.x() * vc_distance / vp1_dist
-        yp1 = p1.y() * vc_distance / vp1_dist
+        vp1_dist = abs(vanishing_point - p1.z)
+        xp1 = p1.x * vc_distance / vp1_dist
+        yp1 = p1.y * vc_distance / vp1_dist
 
-        vp2_dist = abs(vanishing_point - p2.z())
-        xp2 = p2.x() * vc_distance / vp2_dist
-        yp2 = p2.y() * vc_distance / vp2_dist
+        vp2_dist = abs(vanishing_point - p2.z)
+        xp2 = p2.x * vc_distance / vp2_dist
+        yp2 = p2.y * vc_distance / vp2_dist
 
-        vp3_dist = abs(vanishing_point - p3.z())
-        xp3 = p3.x() * vc_distance / vp3_dist
-        yp3 = p3.y() * vc_distance / vp3_dist
+        vp3_dist = abs(vanishing_point - p3.z)
+        xp3 = p3.x * vc_distance / vp3_dist
+        yp3 = p3.y * vc_distance / vp3_dist
 
         self.plt.fill([xp1, xp2, xp3], [yp1, yp2, yp3], color=color)
 
