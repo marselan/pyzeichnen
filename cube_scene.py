@@ -35,7 +35,7 @@ c2.get_tk_widget().pack(side=tki.TOP, fill=tki.BOTH, expand=1)
 
 light = render.Vector3D(0.3, 0.5, 0.8)
 frustum = render.Frustum(6, 6, camera_dist, -100.0, 80, 80, plt2, light)
-scene = render.Scene3D('two_chests.obj', plt2, frustum, light)
+scene = render.Scene3D('cube.obj', plt2, frustum, light)
 scene.parse_file()
 scene.camera_distance = camera_dist
 

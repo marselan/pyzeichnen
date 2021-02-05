@@ -132,14 +132,27 @@ class Frustum:
         vp1_dist = abs(vanishing_point - p1.z)
         xp1 = p1.x * vc_distance / vp1_dist
         yp1 = p1.y * vc_distance / vp1_dist
+        zp1 = p1.z * vc_distance / vp1_dist
 
         vp2_dist = abs(vanishing_point - p2.z)
         xp2 = p2.x * vc_distance / vp2_dist
         yp2 = p2.y * vc_distance / vp2_dist
+        zp2 = p2.z * vc_distance / vp2_dist
 
         vp3_dist = abs(vanishing_point - p3.z)
         xp3 = p3.x * vc_distance / vp3_dist
         yp3 = p3.y * vc_distance / vp3_dist
+        zp3 = p3.z * vc_distance / vp3_dist
+
+        projected_point_1 = Vector3D(xp1, yp1, zp1)
+        projected_point_2 = Vector3D(xp2, yp2, zp2)
+        projected_point_3 = Vector3D(xp3, yp3, zp3)
+        projected_triangle = Triangle3D(projected_point_1, projected_point_2, projected_point_3)
+        projected_triangle_norm = projected_triangle.normal.norm()
+        projected_dot_prod = Vector3D(0, 0, 1).dot_prod(projected_triangle_norm)
+        if projected_dot_prod <= 0:
+            print(projected_dot_prod)
+            return
 
         self.plt.fill([xp1, xp2, xp3], [yp1, yp2, yp3], color=color)
 
