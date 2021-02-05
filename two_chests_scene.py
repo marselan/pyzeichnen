@@ -4,19 +4,6 @@
 # Created by Mariano Arselan at 05-02-21
 #
 
-#
-# face_scene.py
-#
-# Created by Mariano Arselan at 05-02-21
-#
-
-#
-# cube_scene.py
-#
-# Created by Mariano Arselan at 10-12-20
-#
-
-
 import render
 import tkinter as tki
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
