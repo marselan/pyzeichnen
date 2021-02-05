@@ -77,11 +77,6 @@ class Frustum:
         p2 = triangle.p2
         p3 = triangle.p3
 
-        triangle_norm = triangle.normal.norm()
-        dot_prod = dir3.dot_prod(triangle_norm)
-        if dot_prod <= 0:
-            return None
-
         # project Z coords onto current base
         zp1 = p1.dot_prod(dir3) / dir3.length()
         zp2 = p2.dot_prod(dir3) / dir3.length()
@@ -103,46 +98,21 @@ class Frustum:
         yp2 = p2.dot_prod(dir2) / dir2.length()
         yp3 = p3.dot_prod(dir2) / dir2.length()
 
-        # create a triangle with the new coords
-        tp1 = Vector3D(xp1, yp1, zp1)
-        tp2 = Vector3D(xp2, yp2, zp2)
-        tp3 = Vector3D(xp3, yp3, zp3)
-        return Triangle3D(tp1, tp2, tp3)
-
-    def project_triangle(self, triangle):
-        dir1 = self.dir1
-        dir2 = self.dir2
-        dir3 = self.dir3
-
-        p1 = triangle.p1
-        p2 = triangle.p2
-        p3 = triangle.p3
-
-        # calculate light for the projected triangle
-        triangle_norm = triangle.normal.norm()
-        transformed_light = self.light.rotate(dir1, dir2, dir3)
-        light_norm = transformed_light.norm()
-        shadow = triangle_norm.dot_prod(light_norm)
-        color = (0, 0, max(shadow, 0))
-
         vc_distance = 10.0
         vanishing_point = self.front + vc_distance
 
         # project the new triangle onto the front plane of the frustum
-        vp1_dist = abs(vanishing_point - p1.z)
-        xp1 = p1.x * vc_distance / vp1_dist
-        yp1 = p1.y * vc_distance / vp1_dist
-        zp1 = p1.z * vc_distance / vp1_dist
+        vp1_dist = abs(vanishing_point - zp1)
+        xp1 = xp1 * vc_distance / vp1_dist
+        yp1 = yp1 * vc_distance / vp1_dist
 
-        vp2_dist = abs(vanishing_point - p2.z)
-        xp2 = p2.x * vc_distance / vp2_dist
-        yp2 = p2.y * vc_distance / vp2_dist
-        zp2 = p2.z * vc_distance / vp2_dist
+        vp2_dist = abs(vanishing_point - zp2)
+        xp2 = xp2 * vc_distance / vp2_dist
+        yp2 = yp2 * vc_distance / vp2_dist
 
-        vp3_dist = abs(vanishing_point - p3.z)
-        xp3 = p3.x * vc_distance / vp3_dist
-        yp3 = p3.y * vc_distance / vp3_dist
-        zp3 = p3.z * vc_distance / vp3_dist
+        vp3_dist = abs(vanishing_point - zp3)
+        xp3 = xp3 * vc_distance / vp3_dist
+        yp3 = yp3 * vc_distance / vp3_dist
 
         projected_point_1 = Vector3D(xp1, yp1, zp1)
         projected_point_2 = Vector3D(xp2, yp2, zp2)
@@ -151,10 +121,26 @@ class Frustum:
         projected_triangle_norm = projected_triangle.normal.norm()
         projected_dot_prod = Vector3D(0, 0, 1).dot_prod(projected_triangle_norm)
         if projected_dot_prod <= 0:
-            print(projected_dot_prod)
-            return
+            return None
 
-        self.plt.fill([xp1, xp2, xp3], [yp1, yp2, yp3], color=color)
+        return projected_triangle
+
+    def project_triangle(self, transformed_triangle, original_triangle):
+        dir1 = self.dir1
+        dir2 = self.dir2
+        dir3 = self.dir3
+
+        p1 = transformed_triangle.p1
+        p2 = transformed_triangle.p2
+        p3 = transformed_triangle.p3
+
+        # calculate light for the projected triangle
+        triangle_norm = original_triangle.normal.norm()
+        light_norm = self.light.norm()
+        shadow = triangle_norm.dot_prod(light_norm)
+        color = (0, 0, max(shadow, 0))
+
+        self.plt.fill([p1.x, p2.x, p3.x], [p1.y, p2.y, p3.y], color=color)
 
     def project(self, triangle, x, y):
         # calculate light for the projected triangle
@@ -213,14 +199,16 @@ class Scene3D:
 
     def project_fast(self):
         transformed_triangles = []
+        original_triangles = {}
         for triangle in self.triangles:
             transformed_triangle = self.frustum.transform(triangle)
             if transformed_triangle is None:
                 continue
             transformed_triangles.append(transformed_triangle)
+            original_triangles[transformed_triangle] = triangle
         quick_sort(transformed_triangles)
-        for triangle in transformed_triangles:
-            self.frustum.project_triangle(triangle)
+        for transformed_triangle in transformed_triangles:
+            self.frustum.project_triangle(transformed_triangle, original_triangles[transformed_triangle])
 
     def project(self):
         camera_distance = self.frustum.front
