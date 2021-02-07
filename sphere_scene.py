@@ -1,9 +1,8 @@
 #
-# cube_scene.py
+# sphere_scene.py
 #
-# Created by Mariano Arselan at 10-12-20
+# Created by Mariano Arselan at 05-02-21
 #
-
 
 import render
 import tkinter as tki
@@ -35,7 +34,7 @@ c2.get_tk_widget().pack(side=tki.TOP, fill=tki.BOTH, expand=1)
 
 light = render.Vector3D(0.3, 0.5, 0.8)
 frustum = render.Frustum(6, 6, camera_dist, -100.0, 80, 80, plt2, light)
-scene = render.Scene3D('box.obj', plt2, frustum, light)
+scene = render.Scene3D('sphere2.obj', plt2, frustum, light)
 scene.parse_file()
 scene.camera_distance = camera_dist
 

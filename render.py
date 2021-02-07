@@ -239,7 +239,7 @@ class Scene3D:
                     self.frustum.project(nearest_original_triangle, point_x, point_y)
 
     def parse_file(self):
-        scene = pywavefront.Wavefront(self.file_name, strict=True, encoding="utf-8", collect_faces=True, parse=True,
+        scene = pywavefront.Wavefront(self.file_name, strict=False, encoding="utf-8", collect_faces=True, parse=True,
                                       create_materials=True, cache=False)
         for name, material in scene.materials.items():
             print(material.vertex_format)
