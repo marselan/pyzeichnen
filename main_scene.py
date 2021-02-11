@@ -1,5 +1,5 @@
 #
-# chair_scene.py
+# main_scene.py
 #
 # Created by Mariano Arselan at 07-02-21
 #
@@ -15,7 +15,8 @@ root = tki.Tk()
 
 box_size = 4
 
-camera_dist = 5.0
+initial_camera_dist = 5.0
+camera_dist = initial_camera_dist
 
 
 top1 = tki.Toplevel()
@@ -32,12 +33,15 @@ c2 = FigureCanvasTkAgg(fig2, master=top2)
 plt2 = fig2.add_subplot(111, aspect=1.0)
 c2.get_tk_widget().pack(side=tki.TOP, fill=tki.BOTH, expand=1)
 
-light = render.Vector3D(0.3, 0.5, 0.8)
-frustum = render.Frustum(6, 6, camera_dist, -100.0, 80, 80, plt2, light)
-scene = render.Scene3D('chair.obj', plt2, frustum, light)
-scene.parse_file()
-scene.camera_distance = camera_dist
+def createScene(file_name):
+    light = render.Vector3D(0.3, 0.5, 0.8)
+    frustum = render.Frustum(6, 6, camera_dist, -100.0, 80, 80, plt2, light)
+    scene = render.Scene3D(file_name, plt2, frustum, light)
+    scene.parse_file()
+    scene.camera_distance = initial_camera_dist
+    return scene
 
+scene = createScene("sphere2.obj")
 
 def on_distance_changed(value):
     global camera_dist
@@ -75,33 +79,69 @@ def on_azimuth_changed(value):
     scene.set_azimuth(camera_az)
     c2.draw()
 
+def on_object_changed(event):
+    global scene
+    selection = event.widget.curselection()
+    if selection[0] == 0:
+        scene = createScene("sphere2.obj")
+    elif selection[0] == 1:
+        scene = createScene("box.obj")
+    elif selection[0] == 2:
+        scene = createScene("chair.obj")
+    else:
+        scene = createScene("cylinder.obj")
+
+    azimuth.set(0)
+    elevation.set(0)
+    angle.set(0)
+    distance.set(initial_camera_dist)
+
+    plt2.clear()
+    plt2.plot([-box_size, box_size, box_size, -box_size, -box_size],
+              [-box_size, -box_size, box_size, box_size, -box_size], color='w')
+    scene.project_fast()
+    c2.draw()
+
+
+
+object_label = tki.Label(top1, text="Object")
+object_label.grid(row=0, column=0, sticky=E)
+object_list = tki.Listbox(top1, height=10, width=20, highlightcolor='blue')
+object_list.insert(0, "Sphere")
+object_list.insert(1, "Box")
+object_list.insert(2, "Chair")
+object_list.insert(3, "Cylinder")
+object_list.select_set(0, 0)
+object_list.grid(row=0, column=1, sticky=W)
+object_list.bind("<<ListboxSelect>>", on_object_changed)
+
 
 camera_label = tki.Label(top1, text="Camera")
-camera_label.grid(row=0, column=0, columnspan=2)
+camera_label.grid(row=1, column=0, columnspan=2)
 
 az_label = tki.Label(top1, text="Azimuth")
-az_label.grid(row=1, column=0, sticky=W+S)
+az_label.grid(row=2, column=0, sticky=W+S)
 azimuth = tki.Scale(top1, from_=-np.pi, to=np.pi, resolution=.01, length=300, orient=tki.HORIZONTAL,
                     command=on_azimuth_changed)
-azimuth.grid(row=1, column=1, sticky=W)
+azimuth.grid(row=2, column=1, sticky=W)
 
 elev_label = tki.Label(top1, text="Elevation")
-elev_label.grid(row=2, column=0, sticky=W+S)
+elev_label.grid(row=3, column=0, sticky=W+S)
 elevation = tki.Scale(top1, from_=-np.pi, to=np.pi, resolution=.01, length=300, orient=tki.HORIZONTAL,
                       command=on_elevation_changed)
-elevation.grid(row=2, column=1, sticky=W)
+elevation.grid(row=3, column=1, sticky=W)
 
 ang_label = tki.Label(top1, text="Angle")
-ang_label.grid(row=3, column=0, sticky=W+S)
+ang_label.grid(row=4, column=0, sticky=W+S)
 angle = tki.Scale(top1, from_=-np.pi, to=np.pi, resolution=.01, length=300, orient=tki.HORIZONTAL,
                   command=on_angle_changed)
-angle.grid(row=3, column=1, sticky=W)
+angle.grid(row=4, column=1, sticky=W)
 
 dist_label = tki.Label(top1, text="Distance")
-dist_label.grid(row=4, column=0, sticky=W+S)
+dist_label.grid(row=5, column=0, sticky=W+S)
 distance = tki.Scale(top1, from_=camera_dist, to=8.0, resolution=.01, length=300, orient=tki.HORIZONTAL,
                      command=on_distance_changed)
-distance.grid(row=4, column=1, sticky=W)
+distance.grid(row=5, column=1, sticky=W)
 
 
 def on_closing():
