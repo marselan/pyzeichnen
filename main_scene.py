@@ -9,6 +9,7 @@ import tkinter as tki
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.figure import Figure
 from tkinter import *
+from tkinter import ttk
 import numpy as np
 
 root = tki.Tk()
@@ -27,14 +28,14 @@ canvas1 = FigureCanvasTkAgg(fig1, master=top1)
 
 top2 = tki.Toplevel()
 top2.title('Render')
-top2.wm_geometry("800x800+1200+50")
+top2.wm_geometry("800x800+500+50")
 fig2 = Figure(figsize=(10, 5), dpi=100)
 c2 = FigureCanvasTkAgg(fig2, master=top2)
 plt2 = fig2.add_subplot(111, aspect=1.0)
 c2.get_tk_widget().pack(side=tki.TOP, fill=tki.BOTH, expand=1)
 
 def createScene(file_name):
-    light = render.Vector3D(0.3, 0.5, 0.8)
+    light = render.Vector3D(1.0, 0.0, 0.0)
     frustum = render.Frustum(6, 6, camera_dist, -100.0, 80, 80, plt2, light)
     scene = render.Scene3D(file_name, plt2, frustum, light)
     scene.parse_file()
@@ -95,6 +96,8 @@ def on_object_changed(event):
     elevation.set(0)
     angle.set(0)
     distance.set(initial_camera_dist)
+    light_azimuth_var.set(0)
+    light_elevation_var.set(0)
 
     plt2.clear()
     plt2.plot([-box_size, box_size, box_size, -box_size, -box_size],
@@ -102,46 +105,79 @@ def on_object_changed(event):
     scene.project_fast()
     c2.draw()
 
+def on_light_azimuth_changed(value):
+    scene.set_light(float(value), light_elevation_var.get())
+    plt2.clear()
+    plt2.plot([-box_size, box_size, box_size, -box_size, -box_size],
+              [-box_size, -box_size, box_size, box_size, -box_size], color='w')
+    scene.project_fast()
+    c2.draw()
 
+def on_light_elevation_changed(value):
+    scene.set_light(light_azimuth_var.get(), float(value))
+    plt2.clear()
+    plt2.plot([-box_size, box_size, box_size, -box_size, -box_size],
+              [-box_size, -box_size, box_size, box_size, -box_size], color='w')
+    scene.project_fast()
+    c2.draw()
 
 object_label = tki.Label(top1, text="Object")
-object_label.grid(row=0, column=0, sticky=E)
-object_list = tki.Listbox(top1, height=10, width=20, highlightcolor='blue')
+object_label.grid(row=0, column=0, columnspan=2)
+object_list = tki.Listbox(top1, height=10, width=20)
 object_list.insert(0, "Sphere")
 object_list.insert(1, "Box")
 object_list.insert(2, "Chair")
 object_list.insert(3, "Cylinder")
 object_list.select_set(0, 0)
-object_list.grid(row=0, column=1, sticky=W)
+object_list.grid(row=1, column=0, columnspan=2)
 object_list.bind("<<ListboxSelect>>", on_object_changed)
 
 
 camera_label = tki.Label(top1, text="Camera")
-camera_label.grid(row=1, column=0, columnspan=2)
+camera_label.grid(row=2, column=0, columnspan=2)
 
 az_label = tki.Label(top1, text="Azimuth")
-az_label.grid(row=2, column=0, sticky=W+S)
+az_label.grid(row=3, column=0, sticky=W)
 azimuth = tki.Scale(top1, from_=-np.pi, to=np.pi, resolution=.01, length=300, orient=tki.HORIZONTAL,
                     command=on_azimuth_changed)
-azimuth.grid(row=2, column=1, sticky=W)
+azimuth.grid(row=3, column=1, sticky=E)
 
 elev_label = tki.Label(top1, text="Elevation")
-elev_label.grid(row=3, column=0, sticky=W+S)
+elev_label.grid(row=4, column=0, sticky=W)
 elevation = tki.Scale(top1, from_=-np.pi, to=np.pi, resolution=.01, length=300, orient=tki.HORIZONTAL,
                       command=on_elevation_changed)
-elevation.grid(row=3, column=1, sticky=W)
+elevation.grid(row=4, column=1, sticky=W)
 
 ang_label = tki.Label(top1, text="Angle")
-ang_label.grid(row=4, column=0, sticky=W+S)
+ang_label.grid(row=5, column=0, sticky=W+S)
 angle = tki.Scale(top1, from_=-np.pi, to=np.pi, resolution=.01, length=300, orient=tki.HORIZONTAL,
                   command=on_angle_changed)
-angle.grid(row=4, column=1, sticky=W)
+angle.grid(row=5, column=1, sticky=W)
 
 dist_label = tki.Label(top1, text="Distance")
-dist_label.grid(row=5, column=0, sticky=W+S)
+dist_label.grid(row=6, column=0, sticky=W+S)
 distance = tki.Scale(top1, from_=camera_dist, to=8.0, resolution=.01, length=300, orient=tki.HORIZONTAL,
                      command=on_distance_changed)
-distance.grid(row=5, column=1, sticky=W)
+distance.grid(row=6, column=1, sticky=W)
+
+light_label_frame = tki.LabelFrame(top1, text="  Light  ")
+light_label_frame.grid(row=8, column=0, columnspan=2, sticky=W+E)
+
+light_azimuth_label = tki.Label(light_label_frame, text="Azimuth")
+light_azimuth_label.grid(row=0, column=0, sticky=S)
+light_azimuth_var = tki.DoubleVar()
+light_azimuth_var.set(0)
+light_azimuth = tki.Scale(light_label_frame, from_=0, to=2*np.pi, resolution=.1, length=300, orient=tki.HORIZONTAL,
+                     command=on_light_azimuth_changed, var=light_azimuth_var)
+light_azimuth.grid(row=0, column=1)
+
+light_elevation_label = tki.Label(light_label_frame, text="Elevation")
+light_elevation_label.grid(row=1, column=0, sticky=S)
+light_elevation_var = tki.DoubleVar()
+light_elevation_var.set(0)
+light_elevation = tki.Scale(light_label_frame, from_=-np.pi/2, to=np.pi/2, resolution=.1, length=300, orient=tki.HORIZONTAL,
+                     command=on_light_elevation_changed, var=light_elevation_var)
+light_elevation.grid(row=1, column=1)
 
 
 def on_closing():

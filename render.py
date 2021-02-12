@@ -14,6 +14,7 @@ from linalg import rotation_matrix_axis_z
 from linalg import Vector3D
 from linalg import Triangle3D
 from linalg import Line3D
+import math
 
 class Frustum:
     def __init__(self, width, height, front, rear, x_res, y_res, plt, light, azimuth=0.0, elevation=0.0, angle=0.0):
@@ -67,6 +68,13 @@ class Frustum:
     def set_distance(self, distance):
         self.front = distance
         self.update_base()
+
+    def set_light(self, azimuth, elevation):
+        x = math.cos(azimuth) * math.cos(elevation)
+        y = math.sin(elevation)
+        z = math.cos(elevation) * math.sin(azimuth)
+        self.light = Vector3D(x, y, z)
+
 
     def transform(self, triangle):
         dir1 = self.dir1
@@ -196,6 +204,9 @@ class Scene3D:
     def set_camera_distance(self, camera_distance):
         self.frustum.set_distance(camera_distance)
         self.project_fast()
+
+    def set_light(self, azimuth, elevation):
+        self.frustum.set_light(azimuth, elevation)
 
     def project_fast(self):
         transformed_triangles = []
