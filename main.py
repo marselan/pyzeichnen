@@ -1,5 +1,5 @@
 #
-# main_scene.py
+# main.py
 #
 # Created by Mariano Arselan at 07-02-21
 #
