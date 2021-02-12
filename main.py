@@ -19,6 +19,12 @@ box_size = 4
 initial_camera_dist = 5.0
 camera_dist = initial_camera_dist
 
+azimuth = None
+elevation = None
+angle = None
+distance = None
+light_azimuth_var = None
+light_elevation_var = None
 
 top1 = tki.Toplevel()
 top1.title("Control Panel")
@@ -121,69 +127,81 @@ def on_light_elevation_changed(value):
     scene.project_fast()
     c2.draw()
 
-object_label = tki.Label(top1, text="Object")
-object_label.grid(row=0, column=0, columnspan=2)
-object_list = tki.Listbox(top1, height=10, width=20)
-object_list.insert(0, "Sphere")
-object_list.insert(1, "Box")
-object_list.insert(2, "Chair")
-object_list.insert(3, "Cylinder")
-object_list.select_set(0, 0)
-object_list.grid(row=1, column=0, columnspan=2)
-object_list.bind("<<ListboxSelect>>", on_object_changed)
+def build_object_frame():
+    object_label_frame = tki.LabelFrame(top1, text="  Object  ")
+    object_label_frame.grid(row=0, column=0, columnspan=2)
 
+    object_list = tki.Listbox(object_label_frame, height=10, width=20)
+    object_list.insert(0, "Sphere")
+    object_list.insert(1, "Box")
+    object_list.insert(2, "Chair")
+    object_list.insert(3, "Cylinder")
+    object_list.select_set(0, 0)
+    object_list.grid(row=0, column=0)
+    object_list.bind("<<ListboxSelect>>", on_object_changed)
 
-camera_label = tki.Label(top1, text="Camera")
-camera_label.grid(row=2, column=0, columnspan=2)
+def build_camera_frame():
+    global azimuth
+    global elevation
+    global angle
+    global distance
+    camera_label_frame = tki.LabelFrame(top1, text="  Camera  ")
+    camera_label_frame.grid(row=1, column=0, columnspan=2)
 
-az_label = tki.Label(top1, text="Azimuth")
-az_label.grid(row=3, column=0, sticky=W)
-azimuth = tki.Scale(top1, from_=-np.pi, to=np.pi, resolution=.01, length=300, orient=tki.HORIZONTAL,
-                    command=on_azimuth_changed)
-azimuth.grid(row=3, column=1, sticky=E)
+    az_label = tki.Label(camera_label_frame, text="Azimuth")
+    az_label.grid(row=0, column=0, sticky=W)
+    azimuth = tki.Scale(camera_label_frame, from_=-np.pi, to=np.pi, resolution=.01, length=300, orient=tki.HORIZONTAL,
+                        command=on_azimuth_changed)
+    azimuth.grid(row=0, column=1, sticky=E)
 
-elev_label = tki.Label(top1, text="Elevation")
-elev_label.grid(row=4, column=0, sticky=W)
-elevation = tki.Scale(top1, from_=-np.pi, to=np.pi, resolution=.01, length=300, orient=tki.HORIZONTAL,
-                      command=on_elevation_changed)
-elevation.grid(row=4, column=1, sticky=W)
+    elev_label = tki.Label(camera_label_frame, text="Elevation")
+    elev_label.grid(row=1, column=0, sticky=W)
+    elevation = tki.Scale(camera_label_frame, from_=-np.pi, to=np.pi, resolution=.01, length=300, orient=tki.HORIZONTAL,
+                          command=on_elevation_changed)
+    elevation.grid(row=1, column=1, sticky=W)
 
-ang_label = tki.Label(top1, text="Angle")
-ang_label.grid(row=5, column=0, sticky=W+S)
-angle = tki.Scale(top1, from_=-np.pi, to=np.pi, resolution=.01, length=300, orient=tki.HORIZONTAL,
-                  command=on_angle_changed)
-angle.grid(row=5, column=1, sticky=W)
+    ang_label = tki.Label(camera_label_frame, text="Angle")
+    ang_label.grid(row=2, column=0, sticky=W+S)
+    angle = tki.Scale(camera_label_frame, from_=-np.pi, to=np.pi, resolution=.01, length=300, orient=tki.HORIZONTAL,
+                      command=on_angle_changed)
+    angle.grid(row=2, column=1, sticky=W)
 
-dist_label = tki.Label(top1, text="Distance")
-dist_label.grid(row=6, column=0, sticky=W+S)
-distance = tki.Scale(top1, from_=camera_dist, to=8.0, resolution=.01, length=300, orient=tki.HORIZONTAL,
-                     command=on_distance_changed)
-distance.grid(row=6, column=1, sticky=W)
+    dist_label = tki.Label(camera_label_frame, text="Distance")
+    dist_label.grid(row=3, column=0, sticky=W+S)
+    distance = tki.Scale(camera_label_frame, from_=camera_dist, to=8.0, resolution=.01, length=300, orient=tki.HORIZONTAL,
+                         command=on_distance_changed)
+    distance.grid(row=3, column=1, sticky=W)
 
-light_label_frame = tki.LabelFrame(top1, text="  Light  ")
-light_label_frame.grid(row=8, column=0, columnspan=2, sticky=W+E)
+def build_light_frame():
+    global light_azimuth_var
+    global light_elevation_var
+    light_label_frame = tki.LabelFrame(top1, text="  Light  ")
+    light_label_frame.grid(row=2, column=0, columnspan=2, sticky=W+E)
 
-light_azimuth_label = tki.Label(light_label_frame, text="Azimuth")
-light_azimuth_label.grid(row=0, column=0, sticky=S)
-light_azimuth_var = tki.DoubleVar()
-light_azimuth_var.set(0)
-light_azimuth = tki.Scale(light_label_frame, from_=0, to=2*np.pi, resolution=.1, length=300, orient=tki.HORIZONTAL,
-                     command=on_light_azimuth_changed, var=light_azimuth_var)
-light_azimuth.grid(row=0, column=1)
+    light_azimuth_label = tki.Label(light_label_frame, text="Azimuth")
+    light_azimuth_label.grid(row=0, column=0, sticky=S)
+    light_azimuth_var = tki.DoubleVar()
+    light_azimuth_var.set(0)
+    light_azimuth = tki.Scale(light_label_frame, from_=0, to=2*np.pi, resolution=.1, length=300, orient=tki.HORIZONTAL,
+                         command=on_light_azimuth_changed, var=light_azimuth_var)
+    light_azimuth.grid(row=0, column=1)
 
-light_elevation_label = tki.Label(light_label_frame, text="Elevation")
-light_elevation_label.grid(row=1, column=0, sticky=S)
-light_elevation_var = tki.DoubleVar()
-light_elevation_var.set(0)
-light_elevation = tki.Scale(light_label_frame, from_=-np.pi/2, to=np.pi/2, resolution=.1, length=300, orient=tki.HORIZONTAL,
-                     command=on_light_elevation_changed, var=light_elevation_var)
-light_elevation.grid(row=1, column=1)
+    light_elevation_label = tki.Label(light_label_frame, text="Elevation")
+    light_elevation_label.grid(row=1, column=0, sticky=S)
+    light_elevation_var = tki.DoubleVar()
+    light_elevation_var.set(0)
+    light_elevation = tki.Scale(light_label_frame, from_=-np.pi/2, to=np.pi/2, resolution=.1, length=300, orient=tki.HORIZONTAL,
+                         command=on_light_elevation_changed, var=light_elevation_var)
+    light_elevation.grid(row=1, column=1)
 
 
 def on_closing():
     root.quit()
     root.destroy()
 
+build_object_frame()
+build_camera_frame()
+build_light_frame()
 
 top1.protocol("WM_DELETE_WINDOW", on_closing)
 top2.protocol("WM_DELETE_WINDOW", on_closing)
