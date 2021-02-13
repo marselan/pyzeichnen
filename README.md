@@ -1,7 +1,7 @@
 # pyzeichnen
 Basic 3D rendering engine in Python
 
-Please take a look at the wiki at GitHub!
+Please take a look at the wiki on GitHub!
 
 https://github.com/marselan/pyzeichnen/wiki
 
