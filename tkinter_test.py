@@ -7,9 +7,32 @@
 import tkinter as tk
 from tkinter import ttk
 from tkinter import scrolledtext
+from tkinter import Menu
+
 
 win = tk.Tk()
 win.title("Python GUI")
+
+# create a menu bar
+def _quit():
+    win.quit()
+    win.destroy()
+    exit()
+    
+menu_bar = Menu(win)
+win.config(menu=menu_bar)
+
+# create menu and add menu items
+file_menu = Menu(menu_bar)
+file_menu.add_command(label="New")
+file_menu.add_separator()
+file_menu.add_command(label="Exit", command=_quit)
+menu_bar.add_cascade(label="File", menu=file_menu)
+
+help_menu = Menu(menu_bar)
+help_menu.add_command(label="About")
+menu_bar.add_cascade(label="Help", menu=help_menu)
+
 
 mighty = ttk.LabelFrame(win, text="Mighty Python")
 mighty.grid(column=0, row=0, padx=8, pady=4)
@@ -87,5 +110,5 @@ for child in buttons_frame.winfo_children():
     child.grid_configure(padx=8, pady=4)
 
 win.title("Mariano")
-win.resizable(True, True)
+win.resizable(False, False)
 win.mainloop()
